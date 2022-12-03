@@ -8,7 +8,7 @@
 # with Android-x86 project.
 #
 
-PATH=/sbin:/bin:/system/bin:/system/xbin; export PATH
+PATH=/sbin:/bin:/system/bin:/system/xbin:/vendor/bin:/system/vendor/bin; export PATH
 
 # auto installation
 if [ -n "$AUTO_INSTALL" ]; then
