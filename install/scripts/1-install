@@ -255,11 +255,18 @@ create_menulst()
 	echo -e "${GRUB_OPTIONS:-default=0\ntimeout=6\nsplashimage=/grub/android-x86.xpm.gz\n}root (hd0,$1)\n" > $menulst
 
 	create_entry "$OS_TITLE $VER" quiet $cmdline
+	create_entry "$OS_TITLE $VER (intel)" quiet $cmdline HWC=drm_minigbm_celadon GRALLOC=minigbm
+	create_entry "$OS_TITLE $VER (intel) w/ FFMPEG" quiet $cmdline HWC=drm_minigbm_celadon GRALLOC=minigbm FFMPEG_CODEC=1 FFMPEG_PREFER_C2=1
+	create_entry "$OS_TITLE $VER PC-Mode (intel) w/FFMPEG" quiet $cmdline PC_MODE=1 HWC=drm_minigbm_celadon GRALLOC=minigbm FFMPEG_CODEC=1 FFMPEG_PREFER_C2=1
+	create_entry "$OS_TITLE $VER PC-Mode" quiet $cmdline PC_MODE=1
+	create_entry "$OS_TITLE $VER QEMO/KVM" quiet $cmdline HWC=drm_minigbm GRALLOC=minigbm_arcvm FFMPEG_HWACCEL_DISABLE=1
+	create_entry "$OS_TITLE $VER VBOX/VMWARE" quiet $cmdline nomodeset HWACCEL=0
 	create_entry "$OS_TITLE $VER (Debug mode)" $cmdline DEBUG=2
 	create_entry "$OS_TITLE $VER (Debug mode) gralloc.gbm" $cmdline DEBUG=2 GRALLOC=gbm
-	create_entry "$OS_TITLE $VER (Debug mode) hwcomposer.drm gralloc.gbm" $cmdline DEBUG=2 HWC=drm GRALLOC=gbm
-	create_entry "$OS_TITLE $VER (Debug mode) hwcomposer.drm_minigbm gralloc.minigbm" DEBUG=2 HWC=drm_minigbm GRALLOC=minigbm
-	create_entry "$OS_TITLE $VER (Debug mode) hwcomposer.drm_minigbm gralloc.minigbm_gbm_mesa" DEBUG=2 HWC=drm_minigbm GRALLOC=minigbm_gbm_mesa
+	create_entry "$OS_TITLE $VER (Debug mode) hwc.drm gralloc.gbm" $cmdline DEBUG=2 HWC=drm GRALLOC=gbm
+	create_entry "$OS_TITLE $VER (Debug mode) hwc.drm_minigbm gralloc.minigbm" DEBUG=2 HWC=drm_minigbm GRALLOC=minigbm
+	create_entry "$OS_TITLE $VER (Debug mode) hwc.drm_minigbm_celadon gralloc.minigbm" DEBUG=2 HWC=drm_minigbm_celadon GRALLOC=minigbm
+	create_entry "$OS_TITLE $VER (Debug mode) hwc.drm_minigbm gralloc.minigbm_gbm_mesa" DEBUG=2 HWC=drm_minigbm GRALLOC=minigbm_gbm_mesa
 	create_entry "$OS_TITLE $VER (Debug nomodeset)" nomodeset $cmdline DEBUG=2
 	create_entry "$OS_TITLE $VER (Debug video=LVDS-1:d)" video=LVDS-1:d $cmdline DEBUG=2
 }
