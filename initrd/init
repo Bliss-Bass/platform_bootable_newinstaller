@@ -314,8 +314,10 @@ done
 
 # ensure keyboard driver is loaded
 if [ -n "$INSTALL" -o -n "$DEBUG" ]; then
+	echo "Detecting hardware..."
 	busybox modprobe -a atkbd hid-apple
 	auto_detect &
+	wait
 fi
 
 if [ 0$DEBUG -gt 0 ]; then
