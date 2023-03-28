@@ -5,7 +5,7 @@
 # Global Property
 title-text: ""
 title-font: "Sans Regular 12"
-title-color: "#000000"
+title-color: "#00A8EC"
 message-font: "Fixed Regular 13"
 message-color: "#FFFFFF"
 message-bg-color: "#f6f6f6"
@@ -22,7 +22,7 @@ terminal-font: "Fixed Regular 13"
 		height = 56%
 		item_font = "Sans Regular 12"
 		selected_item_font = "Sans Regular 14"
-		item_color = "#000000"
+		item_color = "#888888"
 		selected_item_color = "#FFFFFF"
 		item_height = 38
 		item_padding = 15
@@ -41,26 +41,25 @@ terminal-font: "Fixed Regular 13"
 # Show a styled horizontal progress bar
 + progress_bar {
 		id = "__timeout__"
-		left = 15%
-		width = 70%
-		top = 82%
-		height = 20
+		left = 0%
+		width = 100%
+		top = 0
+		height = 23
 		show_text = false
-		font = "Sans Regular 10"
-		text_color = "255, 255, 255"
-		text = "@TIMEOUT_NOTIFICATION_LONG@"
+		text_color = "192,192,192"
+		text = ""
 		bar_style = "progress_bar_*.png"
 		highlight_style = "progress_highlight_*.png"
 }
 
 # Show an informational message.
 + hbox {
-		top = 25
-		left = 15%
-		+ label {text = "Enter: " font = "Sans 12" color = "#ffff00" align = "left"}
-		+ label {text = "Boot Selection     " font = "Sans 12" color = "#ffffff" align = "left"}
-		+ label {text = "E: " font = "Sans 12" color = "#ffff00" align = "left"}
-		+ label {text = "Edit Selection     " font = "Sans 12" color = "#ffffff" align = "left"}
-		+ label {text = "C: " font = "Sans 12" color = "#ffff00" align = "left"}
+		left = 28%
+		top = 80%
+		+ label {text = "Enter: " font = "Sans 12" color = "#00A8EC" align = "left"}
+		+ label {text = "Boot Selected     " font = "Sans 12" color = "#ffffff" align = "left"}
+		+ label {text = "E: " font = "Sans 12" color = "#00A8EC" align = "left"}
+		+ label {text = "Edit Selected     " font = "Sans 12" color = "#ffffff" align = "left"}
+		+ label {text = "C: " font = "Sans 12" color = "#00A8EC" align = "left"}
 		+ label {text = "GRUB Commandline" font = "Sans 12" color = "#ffffff" align = "left"}
 }
