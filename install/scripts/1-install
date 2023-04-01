@@ -342,7 +342,7 @@ create_data_img()
 
 try_upgrade()
 {
-	[ -d $1 ] && return
+	[ -d $1 ] && dialog --title "No install found to upgrade at: $1" --nocancel --pause "" 8 41 1 && return
 
 	for d in hd/*; do
 		[ -n "`ls "$d"/system* 2> /dev/null`" ] && echo \"`basename $d`\" \"\"
