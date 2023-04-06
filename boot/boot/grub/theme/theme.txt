@@ -4,15 +4,15 @@
 
 # Global Property
 title-text: ""
-title-font: "Sans Regular 12"
+title-font: "DejaVu Sans Regular 14"
 title-color: "#00A8EC"
-message-font: "Fixed Regular 13"
+message-font: "DejaVu Sans Regular 14"
 message-color: "#FFFFFF"
 message-bg-color: "#f6f6f6"
 desktop-image: "android-x86.png"
 desktop-color: "#000000"
 terminal-box: "menu_bkg_*.png"
-terminal-font: "Fixed Regular 13"
+terminal-font: "Terminus Regular 14"
 
 # Show the boot menu
 + boot_menu {
@@ -20,8 +20,8 @@ terminal-font: "Fixed Regular 13"
 		width = 70%
 		top = 20%
 		height = 56%
-		item_font = "Sans Regular 12"
-		selected_item_font = "Sans Regular 14"
+		item_font = "DejaVu Sans Regular 14"
+		selected_item_font = "DejaVu Sans Regular 14"
 		item_color = "#888888"
 		selected_item_color = "#FFFFFF"
 		item_height = 38
@@ -53,13 +53,10 @@ terminal-font: "Fixed Regular 13"
 }
 
 # Show an informational message.
-+ hbox {
-		left = 28%
-		top = 80%
-		+ label {text = "Enter: " font = "Sans 12" color = "#00A8EC" align = "left"}
-		+ label {text = "Boot Selected     " font = "Sans 12" color = "#ffffff" align = "left"}
-		+ label {text = "E: " font = "Sans 12" color = "#00A8EC" align = "left"}
-		+ label {text = "Edit Selected     " font = "Sans 12" color = "#ffffff" align = "left"}
-		+ label {text = "C: " font = "Sans 12" color = "#00A8EC" align = "left"}
-		+ label {text = "GRUB Commandline" font = "Sans 12" color = "#ffffff" align = "left"}
++ image {
+		top = 76%
+		left = 50%-240
+		width = 480
+		height = 24
+		file = "options.png"
 }
