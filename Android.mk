@@ -203,6 +203,7 @@ $(ISO_IMAGE): $(boot_dir) $(BUILT_IMG)
 		-input-charset utf-8 -V "$(if $(RELEASE_OS_TITLE),$(RELEASE_OS_TITLE),Android-x86) $(VER) ($(TARGET_ARCH))" -o $@ $^
 	$(hide) PATH="/sbin:/usr/sbin:/bin:/usr/bin" isohybrid --uefi $@
 	$(hide) $(SHA256) $(ISO_IMAGE) | sed "s|$(PRODUCT_OUT)/||" > $(ISO_IMAGE).sha256
+	@echo -e ""
 	@echo -e ${CL_CYN}"===========-$(RELEASE_OS_TITLE) Package Complete-==========="${CL_RST}
 	@echo -e ${CL_CYN}"Zip: "${CL_MAG} $(ISO_IMAGE)${CL_RST}
 	@echo -e ${CL_CYN}"SHA256: "${CL_MAG}" `cat $(ISO_IMAGE).sha256 | cut -d ' ' -f 1`"${CL_RST}
@@ -212,6 +213,7 @@ $(ISO_IMAGE): $(boot_dir) $(BUILT_IMG)
 	@echo -e ${CL_CYN}"==============================================="${CL_RST}
 	@echo -e ""
 	@echo -e "\n\n$@ is built successfully.\n\n"
+	@echo -e ""
 
 rpm: $(wildcard $(LOCAL_PATH)/rpm/*) $(BUILT_IMG)
 	@echo ----- Making an rpm ------
