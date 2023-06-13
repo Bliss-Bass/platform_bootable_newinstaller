@@ -130,9 +130,10 @@ exec 2>> $LOG
 
 # early boot
 if test x"$HAS_CTTY" != x"Yes"; then
-	# initialise /proc and /sys
+	# initialise /proc & /sys and /tmp
 	busybox mount -t proc proc /proc
 	busybox mount -t sysfs sys /sys
+	busybox mount -t tmpfs tmpfs /tmp
 	# let busybox install all applets as symlinks
 	busybox --install -s
 	# spawn shells on tty 2 and 3 if debug or installer
