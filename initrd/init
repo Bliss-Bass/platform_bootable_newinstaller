@@ -14,13 +14,13 @@ PATH=/sbin:/bin:/system/bin:/system/xbin:/vendor/bin:/system_ext/bin:/system/ven
 text_art()
 {
 cat << "EOF"
-================================================
+==========================================================
 
-  BLISS-BASS   -   KIOSK OS 
+  BLISS-BASS   -   Customizable Android Subsystem for PC
 
-================================================
+==========================================================
   This product was created using Bliss-Bass	
-================================================
+==========================================================
 EOF
 }
 
