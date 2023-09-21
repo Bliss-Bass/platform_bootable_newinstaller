@@ -7,12 +7,21 @@
 #endif
 
 #define GCRYPT_NO_DEPRECATED 1
+#define HAVE_MEMMOVE 1
 
 /* Define to 1 to enable disk cache statistics.  */
 #define DISK_CACHE_STATS 0
 #define BOOT_TIME_STATS 0
 /* Define to 1 to make GRUB quieter at boot time.  */
-#define QUIET_BOOT 1
+#define QUIET_BOOT 0
+
+/* We don't need those.  */
+#define MINILZO_CFG_SKIP_LZO_PTR 1
+#define MINILZO_CFG_SKIP_LZO_UTIL 1
+#define MINILZO_CFG_SKIP_LZO_STRING 1
+#define MINILZO_CFG_SKIP_LZO_INIT 1
+#define MINILZO_CFG_SKIP_LZO1X_1_COMPRESS 1
+#define MINILZO_CFG_SKIP_LZO1X_DECOMPRESS 1
 
 #if defined (GRUB_BUILD)
 #undef ENABLE_NLS
@@ -33,10 +42,6 @@
 #define HAVE_FONT_SOURCE 1
 /* Define if C symbols get an underscore after compilation. */
 #define HAVE_ASM_USCORE 0
-/* Define it to \"addr32\" or \"addr32;\" to make GAS happy.  */
-#define ADDR32 addr32
-/* Define it to \"data32\" or \"data32;\" to make GAS happy. */
-#define DATA32 data32
 /* Define it to one of __bss_start, edata and _edata.  */
 #define BSS_START_SYMBOL __bss_start
 /* Define it to either end or _end.  */
@@ -44,11 +49,11 @@
 /* Name of package.  */
 #define PACKAGE "grub"
 /* Version number of package.  */
-#define VERSION "2.02~beta2"
+#define VERSION "2.06"
 /* Define to the full name and version of this package. */
-#define PACKAGE_STRING "GRUB 2.02~beta2-9ubuntu1.17"
+#define PACKAGE_STRING "GRUB 2.06-13"
 /* Define to the version of this package. */
-#define PACKAGE_VERSION "2.02~beta2-9ubuntu1.17"
+#define PACKAGE_VERSION "2.06-13"
 /* Define to the full name of this package. */
 #define PACKAGE_NAME "GRUB"
 /* Define to the address where bug reports for this package should be sent. */

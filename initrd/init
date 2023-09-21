@@ -126,6 +126,8 @@ if test x"$HAS_CTTY" != x"Yes"; then
 	busybox mount -t tmpfs tmpfs /tmp
 	# let busybox install all applets as symlinks
 	busybox --install -s /bin
+	# remove busybox fdisk to use the fdisk program instead
+	rm /bin/fdisk
 	# spawn shells on tty 2 and 3 if debug or installer
 	if test -n "$DEBUG" || test -n "$INSTALL"; then
 		# ensure they can open a controlling tty
