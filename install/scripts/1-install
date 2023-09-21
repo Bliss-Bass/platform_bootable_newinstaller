@@ -216,7 +216,7 @@ format_fs()
 			cmd="mkfs.ext3 -L"
 			;;
 		ntfs)
-			cmd="mkntfs -fL"
+			cmd="mkfs.ntfs -fL"
 			;;
 		fat32)
 			cmd="mkdosfs -n"
@@ -641,7 +641,6 @@ do_install()
 	efi=$(cat /sys/firmware/efi/fw_platform_size 2> /dev/null)
 	[ -n "$efi" ] && mount -t efivarfs none /sys/firmware/efi/efivars
 	
-	chmod 755 /sbin/grub
 	chmod 755 /sbin/grub-install
 	chmod 755 /sbin/mkntfs
 	chmod 755 /sbin/efibootmgr
