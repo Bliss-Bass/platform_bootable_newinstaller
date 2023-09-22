@@ -6,19 +6,9 @@ Currrently we are tracking packages from Debian 13 (trixie)
 
 - bin/busybox
 
-busybox i386 (1:1.36.1-3.1)
+busybox i386 (1.36.1)
 
-https://packages.debian.org/trixie/i386/busybox
-
-- bin/mountpoint
-
-busybox musl i386 (1.36.1)
-
-```
-Due to Debian's busybox doesn't come with mountpoint, we use mountpoint from Docker's busybox instead.
-```
-
-https://github.com/docker-library/busybox/tree/dist-i386/latest-1/musl
+https://github.com/docker-library/busybox/tree/dist-i386/latest/glibc
 
 - bin/ld-linux.so.2 (symlink lib/ld-linux.so.2)
 - lib/libc.so.6
