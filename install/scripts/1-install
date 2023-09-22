@@ -51,7 +51,8 @@ choose()
 
 size_gb()
 {
-	printf %0.2fGB $(dc `cat $1/size` 2097152 / p)
+	size=`cat $1/size`
+	printf %0.2fGB $(dc -e"6 k $size 2097152 / p")
 }
 
 find_partition()
