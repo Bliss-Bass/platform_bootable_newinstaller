@@ -140,6 +140,7 @@ if test x"$HAS_CTTY" != x"Yes"; then
 		echo 0 0 0 0 > /proc/sys/kernel/printk
 	fi
 	# initialise /dev (first time)
+	busybox mount -t devtmpfs devtmpfs /dev
 	mkdir -p /dev/block
 	echo /sbin/mdev > /proc/sys/kernel/hotplug
 	mdev -s
