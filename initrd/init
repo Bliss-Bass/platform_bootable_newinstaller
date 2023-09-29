@@ -142,7 +142,7 @@ if test x"$HAS_CTTY" != x"Yes"; then
 	# initialise /dev (first time)
 	busybox mount -t devtmpfs devtmpfs /dev
 	mkdir -p /dev/block
-	echo /sbin/mdev > /proc/sys/kernel/hotplug
+	echo /bin/mdev > /proc/sys/kernel/hotplug
 	mdev -s
 	# re-run this script with a controlling tty
 	exec env HAS_CTTY=Yes setsid cttyhack /bin/sh "$0" "$@"
