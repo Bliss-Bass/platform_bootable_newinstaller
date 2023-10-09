@@ -379,7 +379,7 @@ create_data_img()
 
 try_upgrade()
 {
-	[ -d $1 ] && dialog --title "No install found to upgrade at: $1" --nocancel --pause "" 8 41 1 && return
+	[ -d $1 ] && dialog --title "No install found to upgrade at: $1" --nocancel --pause "" 8 54 1 && return
 
 	for d in hd/*; do
 		[ -n "`ls "$d"/system* 2> /dev/null`" ] && echo \"`basename $d`\" \"\"
@@ -600,7 +600,7 @@ install_to()
 			[ -d $f ] || chmod 644 $f
 		done
 		
-		dialog --infobox "\n Preparing install for OTA updates..." 5 27
+		dialog --infobox "\n Preparing install for OTA updates..." 5 42
 
 		mv kernel kernel_a
 		mv initrd.img initrd_a.img
