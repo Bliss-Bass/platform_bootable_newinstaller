@@ -285,8 +285,9 @@ format_fs()
 			"\nWould you like to customize the formatted drive name ? 
 \n\nYou can change it here or press Enter to skip:" 10 63 "$INSTALL_LABEL" 2> /tmp/install_drive_name
 
-		[ -n "$AUTO_INSTALL" ] || dialog --title " Confirm " --defaultno --yesno \
-			"\n You chose to format $1 to $choice.\n All data in that partition will be LOST.\n\n Are you sure to format the partition $1?" 10 59
+		[ -n "$AUTO_INSTALL" ] || dialog --colors --backtitle "$BACK_TITLE" --title " Confirm " --defaultno --yesno \
+			"\nYou chose to format $1 to $choice.\n\Z1THE FORMAT PROCESS WILL START IMMEDIATELY. 
+ALL DATA IN THIS PARTITION WILL BE LOST.\Zn\n\nAre you sure to format the partition $1?" 10 59
 		[ $? -ne 0 ] && return 1
 		$cmd `cat /tmp/install_drive_name` /dev/$1 | awk '{
 			# FIXME: very imprecise progress
@@ -687,8 +688,9 @@ make_esp()
 			"\nWould you like to customize the formatted drive name ? 
 \n\nYou can change it here or press Enter to skip:" 10 63 "ESP" 2> /tmp/esp_drive_name
 
-			[ -n "$AUTO_INSTALL" ] || dialog --title " Confirm " --defaultno --yesno \
-				"\n You chose to format $1 to $choice.\n All data in that partition will be LOST.\n\n Are you sure to format the partition $1?" 10 59
+			[ -n "$AUTO_INSTALL" ] || dialog --colors --backtitle "$BACK_TITLE" --title " Confirm " --defaultno --yesno \
+			"\nYou chose to format $1 to $choice.\n\Z1THE FORMAT PROCESS WILL START IMMEDIATELY. 
+ALL DATA IN THIS PARTITION WILL BE LOST.\Zn\n\nAre you sure to format the partition $1?" 10 59
 			[ $? -ne 0 ] && return 1
 			$cmd `cat /tmp/esp_drive_name` /dev/$1 | awk '{
 				# FIXME: very imprecise progress
