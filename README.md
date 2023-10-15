@@ -285,6 +285,24 @@ refind-theme-regular all (fb58a79)
 
 https://github.com/bobafetthotmail/refind-theme-regular
 
+- refind/refind/drivers_ia32/exfat_ia32.efi
+- refind/refind/drivers_ia32/f2fs_ia32.efi
+- refind/refind/drivers_ia32/fat_ia32.efi
+- refind/refind/drivers_ia32/ntfs_ia32.efi
+
+efifs ia32 (1.9)
+
+https://efi.akeo.ie/downloads/efifs-1.9/ia32/
+
+- refind/refind/drivers_x64/exfat_x64.efi
+- refind/refind/drivers_x64/f2fs_x64.efi
+- refind/refind/drivers_x64/fat_x64.efi
+- refind/refind/drivers_x64/ntfs_x64.efi
+
+efifs x86_64 (1.9)
+
+https://efi.akeo.ie/downloads/efifs-1.9/x64/
+
 ## iso
 
 - isolinux/isolinux.bin
