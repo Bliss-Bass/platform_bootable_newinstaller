@@ -196,3 +196,13 @@ https://packages.debian.org/trixie/i386/libefiboot1
 libefivar1 i386 (37-6)
 
 https://packages.debian.org/trixie/i386/libefivar1
+
+## iso
+
+- isolinux/isolinux.bin
+
+isolinux all (3:6.04~git20190206.bf6db5b4+dfsg1-3)
+
+- isolinux/*.c32
+
+syslinux-common all (3:6.04~git20190206.bf6db5b4+dfsg1-3)

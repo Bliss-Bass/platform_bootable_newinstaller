@@ -112,60 +112,11 @@ endif
 .PHONY: installimage
 installimage: $(INSTALL_RAMDISK)
 
-
-isolinux_files := $(addprefix external/syslinux/bios/com32/, \
-	../core/isolinux.bin \
-	chain/chain.c32 \
-	elflink/ldlinux/ldlinux.c32 \
-	lib/libcom32.c32 \
-	libutil/libutil.c32 \
-	menu/vesamenu.c32 \
-	modules/cat.c32 \
-    modules/cmd.c32 \
-    modules/config.c32 \
-    modules/cptime.c32 \
-    modules/cpuid.c32 \
-    modules/cpuidtest.c32 \
-    modules/debug.c32 \
-    modules/disk.c32 \
-    modules/dmitest.c32 \
-    modules/elf.c32 \
-    modules/ethersel.c32 \
-    modules/gpxecmd.c32 \
-    modules/hexdump.c32 \
-    modules/host.c32 \
-    modules/ifcpu.c32 \
-    modules/ifcpu64.c32 \
-    modules/ifmemdsk.c32 \
-    modules/ifplop.c32 \
-    modules/kbdmap.c32 \
-    modules/kontron_wdt.c32 \
-    modules/linux.c32 \
-    modules/ls.c32 \
-    modules/meminfo.c32 \
-    modules/pcitest.c32 \
-    modules/pmload.c32 \
-    modules/poweroff.c32 \
-    modules/prdhcp.c32 \
-    modules/pwd.c32 \
-    modules/pxechn.c32 \
-    modules/reboot.c32 \
-    modules/sanboot.c32 \
-    modules/sdi.c32 \
-    modules/vesainfo.c32 \
-    modules/vpdtest.c32 \
-    modules/whichsys.c32 \
-    modules/zzjson.c32 \
-	mboot/mboot.c32 \
-	gfxboot/gfxboot.c32 \
-	gpllib/libgpl.c32)
-
 boot_dir := $(PRODUCT_OUT)/boot
-$(boot_dir): $(shell find $(LOCAL_PATH)/boot -type f | sort -r) $(isolinux_files) $(systemimg) $(INSTALL_RAMDISK) $(GENERIC_X86_CONFIG_MK) | $(ACP)
+$(boot_dir): $(shell find $(LOCAL_PATH)/boot -type f | sort -r) $(systemimg) $(INSTALL_RAMDISK) $(GENERIC_X86_CONFIG_MK) | $(ACP)
 	$(hide) rm -rf $@
 	$(ACP) -pr $(dir $(<D)) $@
 	$(ACP) -pr $(dir $(<D))../install/grub2/efi $@
-	$(ACP) $(isolinux_files) $@/isolinux
 	PATH="/sbin:/usr/sbin:/bin:/usr/bin"; \
 	img=$@/boot/grub/efi.img; dd if=/dev/zero of=$$img bs=1M count=4; \
 	mkdosfs -n EFI $$img; mmd -i $$img ::boot; \
@@ -230,7 +181,6 @@ endif
 BUILD_NAME_VARIANT := $(ROM_VENDOR_VERSION)
 
 ISO_IMAGE := $(PRODUCT_OUT)/$(BLISS_BUILD_ZIP).iso
-ISOHYBRID := LD_LIBRARY_PATH=$(LOCAL_PATH)/install/lib external/syslinux/bios/utils/isohybrid
 $(ISO_IMAGE): $(boot_dir) $(BUILT_IMG)
 	# Generate Changelog
 	bash bootable/newinstaller/tools/changelog
@@ -244,7 +194,7 @@ $(ISO_IMAGE): $(boot_dir) $(BUILT_IMG)
 	$$GENISOIMG -vJURT -b isolinux/isolinux.bin -c isolinux/boot.cat \
 		-no-emul-boot -boot-load-size 4 -boot-info-table -eltorito-alt-boot -e boot/grub/efi.img -no-emul-boot \
 		-input-charset utf-8 -V "$(if $(RELEASE_OS_TITLE),$(RELEASE_OS_TITLE),Android-x86) ($(TARGET_ARCH))" -o $@ $^
-	$(hide) $(ISOHYBRID) --uefi $@
+	$(hide) PATH="/sbin:/usr/sbin:/bin:/usr/bin" isohybrid --uefi $@
 	$(hide) $(SHA256) $(ISO_IMAGE) | sed "s|$(PRODUCT_OUT)/||" > $(ISO_IMAGE).sha256
 	@echo -e ${CL_CYN}""${CL_CYN}
 	@echo -e ${CL_CYN}"      ___           ___                   ___           ___      "${CL_CYN}
