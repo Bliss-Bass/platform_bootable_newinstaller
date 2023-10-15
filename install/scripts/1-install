@@ -57,6 +57,23 @@ choose()
 	choice=`cat $tempfile`
 }
 
+choose_partmenu()
+{
+	adialog --clear --title " $1 " --cancel-label "Reboot" --menu "$2" 21 79 13 --file $menufile
+
+	retval=$?
+	choice=`cat $tempfile`
+}
+
+choose_formatfs()
+{
+	adialog --clear --title " $1 " --nocancel --menu "$2" 21 79 13 --file $menufile
+
+	retval=$?
+	choice=`cat $tempfile`
+}
+
+
 size_gb()
 {
 	size=`cat $1/size`
@@ -73,6 +90,40 @@ list_disks()
 	for b in /sys/block/[shv]d[a-z] /sys/block/xvd[a-z] /sys/block/mmcblk? /sys/block/nvme*; do
 		[ -d $b ] && echo $b
 	done
+}
+
+list_partitions()
+{
+	blkid | grep -v -E "^/dev/block/|^/dev/loop" | cut -b6- | sort | awk '{
+		l=""
+		t="unknown"
+		sub(/:/, "", $1)
+		for (i = NF; i > 1; --i)
+			if (match($i, "^TYPE")) {
+				t=$i
+				gsub(/TYPE=|"/, "", t)
+			} else if (match($i, "^LABEL")) {
+				l=$i
+				gsub(/LABEL=|"/, "", l)
+			}
+		printf("%-11s%-12s%-18s\n", $1, t, l)
+	}' > $tempfile
+
+	for d in `ls /sys/block`; do
+		for i in /sys/block/$d/$d*; do
+			[ -d $i ] || continue
+			echo $i | grep -qE "loop|ram|sr|boot|rpmb" && continue
+			f=$(grep "`basename $i`" $tempfile || printf "%-11s%-30s" `basename $i` unknown)
+			sz=$(size_gb $i)
+			[ "$sz" = "0.00GB" ] || printf "$f%10s\n" $sz
+		done
+	done | awk -v b=$booted_from '{
+		if (!match($1, b)) {
+			printf("\"%s\" \"", $0)
+			system("cd /sys/block/*/"$1"; for f in ../device/model ../device/name; do [ -e $f ] && printf %-17s \"`cat $f`\" && break; done")
+			printf("\"\n")
+		}
+	}'
 }
 
 auto_partition()
@@ -163,39 +214,25 @@ Select 'Yes' to switch to cgdisk, or 'No' to remain with cfdisk. \
 
 select_dev()
 {
-	blkid | grep -v -E "^/dev/block/|^/dev/loop" | cut -b6- | sort | awk '{
-		l=""
-		t="unknown"
-		sub(/:/, "", $1)
-		for (i = NF; i > 1; --i)
-			if (match($i, "^TYPE")) {
-				t=$i
-				gsub(/TYPE=|"/, "", t)
-			} else if (match($i, "^LABEL")) {
-				l=$i
-				gsub(/LABEL=|"/, "", l)
-			}
-		printf("%-11s%-12s%-18s\n", $1, t, l)
-	}' > $tempfile
+	list_partitions > $menufile
+	printf "\"\" \"\"\n\"Create/Modify partitions\" 
+\"\"\n\"Restart the installer\" 
+\"\"\n\"Open command-line shell\" \"\"\n" >> $menufile
+	choose_partmenu "Choose Partition" "Please select a partition to install $OS_TITLE:\n\nRecommended minimum free space - 12GB  |  
+Optimum free space >= 32GB\n\nPartition | Filesystem | Label            | Size     | Drive name/model"
+	return $retval
+}
 
-	for d in `ls /sys/block`; do
-		for i in /sys/block/$d/$d*; do
-			[ -d $i ] || continue
-			echo $i | grep -qE "loop|ram|sr|boot|rpmb" && continue
-			f=$(grep "`basename $i`" $tempfile || printf "%-11s%-30s" `basename $i` unknown)
-			sz=$(size_gb $i)
-			[ "$sz" = "0.00GB" ] || printf "$f%10s\n" $sz
-		done
-	done | awk -v b=$booted_from '{
-		if (!match($1, b)) {
-			printf("\"%s\" \"", $0)
-			system("cd /sys/block/*/"$1"; for f in ../device/model ../device/name; do [ -e $f ] && printf %-17s \"`cat $f`\" && break; done")
-			printf("\"\n")
-		}
-	} END {
-		printf("\"\" \"\"\n\"Create/Modify partitions\" \"\"\n\"Detect devices\" \"\"\n\"Open command-line shell\" \"\"")
-	}' > $menufile
-	choose "Choose Partition" "Please select a partition to install $OS_TITLE:\n\nRecommended minimum free space - 8GB  |  Optimum free space >= 16GB\n\nPartition | Filesystem | Label            | Size     | Drive name/model"
+select_dev_esp()
+{
+	list_partitions > $menufile
+	printf "\"\" \"\"\n\"Create/Modify partitions\" 
+\"\"\n\"Restart the installer\" 
+\"\"\n\"Open command-line shell\" 
+\"\"\n\"Skip (Not Recommended)\" \"\"\n" >> $menufile
+	choose_partmenu "Choose Partition" "UEFI System detected ! Please select a partition as EFI System Partition (ESP)
+\n\nHint: If you chose ESP already but got restarted to this stage, please choose ESP again, no need to format if you already did.
+\n\nPartition | Filesystem | Label            | Size     | Drive name/model"
 	return $retval
 }
 
@@ -221,7 +258,7 @@ format_fs()
 	local cmd
 	echo -e '"Do not re-format" ""\next4 ""\nntfs ""\nfat32 ""\nexfat ""\nf2fs ""' > $menufile
 	set_answer_if_auto $FORCE_FORMAT
-	choose "Choose filesystem" "Please select a filesystem to format $1:"
+	choose_formatfs "Choose filesystem" "Please select a filesystem to format $1:"
 	case "$choice" in
 		ext4)
 			cmd="mkfs.ext3 -L"
@@ -475,16 +512,24 @@ install_to()
 	[ -n "$efi" ] && adialog --title " Confirm " --no-label Skip --yesno \
 		"\n Do you want to install EFI GRUB2?" 7 39
 	if [ $? -eq 0 ]; then
-		[ -z "$AUTO_INSTALL" -o -n "$AUTO_UPDATE" ] && for i in `list_disks`; do
-			disk=`basename $i`
-			esp=`sgdisk --print /dev/$disk 2> /dev/null | grep EF00 | awk '{print $1}'`
-			[ -n "$esp" ] && boot=`find_partition $disk $esp` && break
-		done
-		if [ -z "$esp" ]; then
-			get_part_info $1
-			boot=$(blkid /dev/$disk* | grep -v $disk: | grep vfat | cut -d: -f1 | head -1)
-			[ -z "$boot" ] && boot=`find_partition $disk 1` || boot=`basename $boot`
-			esp=`cat /sys/block/$disk/$boot/partition`
+		## UEFI installation
+		## Prepare ESP before asking bootloader options
+		if [ "$esp_manual_done" = "1" ]; then
+			boot=$boot_esp
+			esp=$esp_chosen
+			get_part_info $boot
+		else
+			[ -z "$AUTO_INSTALL" -o -n "$AUTO_UPDATE" ] && for i in `list_disks`; do
+				disk=`basename $i`
+				esp=`sgdisk --print /dev/$disk 2> /dev/null | grep EF00 | awk '{print $1}'`
+				[ -n "$esp" ] && boot=`find_partition $disk $esp` && break
+			done
+			if [ -z "$esp" ]; then
+				get_part_info $1
+				boot=$(blkid /dev/$disk* | grep -v $disk: | grep vfat | cut -d: -f1 | head -1)
+				[ -z "$boot" ] && boot=`find_partition $disk 1` || boot=`basename $boot`
+				esp=`cat /sys/block/$disk/$boot/partition`
+			fi
 		fi
 		mkdir -p efi
 		mountpoint -q efi && umount efi
@@ -615,6 +660,104 @@ install_to()
 	return $result
 }
 
+make_esp()
+{
+	ESP_CHECK_GPT=$( fdisk -l | grep "EFI System" | grep "/dev/$1" | awk '{ print $1 }' )
+	ESP_CHECK_MBR=$( fdisk -l | grep "EFI (FAT-12/16/32)" | grep "/dev/$1" | awk '{ print $1 }' )
+
+	if [ "$ESP_CHECK_GPT" == "/dev/$1" ] || [ "$ESP_CHECK_MBR" == "/dev/$1" ]; then
+		local cmd
+		echo -e '"Do not re-format" ""\n"fat32 (CAREFUL)" ""' > $menufile
+		choose_formatfs  "Choose filesystem" "Please select a filesystem to format $1:"
+		case "$choice" in
+			*fat32*)
+				cmd="mkdosfs -n"
+				;;
+			*)
+			;;
+	esac
+		if [ -n "$cmd" ]; then		
+			[ -n "$AUTO_INSTALL" ] || dialog --title " Confirm " --defaultno --yesno \
+				"\n You chose to format $1 to $choice.\n All data in that partition will be LOST.\n\n Are you sure to format the partition $1?" 10 59
+			[ $? -ne 0 ] && return 1
+			$cmd "ESP" /dev/$1 | awk '{
+				# FIXME: very imprecise progress
+				if (match($0, "done"))
+					printf("%d\n", i+=33)
+			}' | progress_bar "Formatting" "Formatting partition $1..."
+		else
+			[ -n "$AUTO_INSTALL" ] || dialog --backtitle "$BACK_TITLE" --title " Confirm " --defaultno --yesno \
+				"\n Are you sure you want to pick $1 as ESP ? \n\n You can always pick again if you choose 'Restart the installer'" 10 75
+			[ $? -ne 0 ] && return 1
+		fi
+
+		export boot_esp=$1
+		export esp_chosen=`cat /sys/block/*/$boot_esp/partition`
+		export esp_manual_done=1
+	else
+		dialog --backtitle "$BACK_TITLE" --title " Error " --nocancel --pause \
+		"This is not an EFI System Partition, please check again" 10 41 4
+		return 1
+	fi
+
+}
+
+warn_esp()
+{
+	dialog --backtitle "$BACK_TITLE" --title " WARNING " --nocancel --pause \
+"UEFI System detected ! Please select a partition as an \
+EFI System Partition (ESP). \n \
+\nIf you don't know what this is, visit BlissOS Documentation \
+for more info." 14 45 7
+}
+
+initialize_esp()
+{
+	case "$choice" in
+		Create*)
+			partition_drive
+			;;
+		Restart*the*installer*)
+			;;
+		*shell*)
+			dialog --backtitle "$BACK_TITLE" --clear --title " WARNING " --nocancel --pause "You are going to use AOSP's shell, if you want to go back to the installer please type exit" 12 41 8
+			/system/bin/sh 2>&1
+			;;
+		Skip*)
+			dialog --backtitle "$BACK_TITLE" --clear --title " WARNING " --defaultno --yes-label "Yes, skip it" --no-label "No, I changed my mind" \
+			--yesno "No ESP is selected, setup will use the old detection method to automatically choose ESP instead which
+is not recommended. Do you still want to skip it ?" 9 55
+			[ $? -eq 0 ] && export esp_manual_done=0 && retval=0
+			;;
+		*)
+			make_esp $choice
+			retval=$?
+			;;
+	esac
+	return $retval
+
+}
+
+initialize_hd()
+{
+	case "$choice" in
+		Create*)
+			partition_drive
+			;;
+		Restart*the*installer*)
+			;;
+		*shell*)
+			dialog --backtitle "$BACK_TITLE" --clear --title " WARNING " --nocancel --pause "You are going to use AOSP's shell, if you want to go back to the installer please type exit" 12 41 8
+			/system/bin/sh 2>&1
+			;;
+		*)
+			install_to $choice
+			retval=$?
+			;;
+	esac
+	return $retval
+}
+
 install_hd()
 {
 	case "$AUTO_INSTALL" in
@@ -630,25 +773,17 @@ install_hd()
 			;;
 	esac
 
+	# If UEFI is detected, tell user to pick ESP partition
+	if [ -n "$efi" ]; then
+	warn_esp
+	select_dev_esp || rebooting
+	retval=1
+	initialize_esp || return $?
+	fi
+
 	select_dev || rebooting
 	retval=1
-	case "$choice" in
-		Create*)
-			partition_drive
-			retval=$?
-			;;
-		Detect*)
-			dialog --title " Detecting... " --nocancel --pause "" 8 41 1
-			;;
-		*shell*)
-			dialog --backtitle "$BACK_TITLE" --clear --title " WARNING " --nocancel --pause "You are going to use AOSP's shell, if you want to go back to the installer please type exit" 12 41 8
-			/system/bin/sh 2>&1
-			;;
-		*)
-			install_to $choice
-			retval=$?
-			;;
-	esac
+	initialize_hd || return $?
 	return $retval
 }
 
