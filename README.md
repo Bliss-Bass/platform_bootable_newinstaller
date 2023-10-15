@@ -18,7 +18,7 @@ https://github.com/docker-library/busybox/tree/dist-i386/latest/glibc
 - lib/libresolv.so.2
 - lib/librt.so.1
 
-libc6 i386 (2.37-8)
+libc6 i386 (2.37-12)
 
 https://packages.debian.org/trixie/i386/libc6
 
