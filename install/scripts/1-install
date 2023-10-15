@@ -1,6 +1,8 @@
 #
 # By Chih-Wei Huang <cwhuang@linux.org.tw>
 #
+# Modified by BlissLabs & Contributors
+#
 # License: GNU Public License
 # We explicitely grant the right to use the scripts
 # with Android-x86 project.
@@ -11,10 +13,11 @@ menufile=/tmp/menu-$$
 
 CPIO=cpio
 OS_TITLE=${OS_TITLE:-Android-x86}
+BACK_TITLE="Made by Android-x86 Project, Modified by BlissLabs & Contributors"
 
 rebooting()
 {
-	dialog --title " Rebooting... " --nocancel --pause "" 8 41 1
+	dialog --backtitle "$BACK_TITLE" --title " Rebooting... " --nocancel --pause "" 8 41 1
 	sync
 	umount -a
 	reboot -f
@@ -37,7 +40,7 @@ adialog()
 	if [ -n "$answer" ]; then
 		auto_answer
 	else
-		dialog "$@" 2> $tempfile
+		dialog --backtitle "$BACK_TITLE" "$@" 2> $tempfile
 	fi
 }
 
@@ -69,7 +72,7 @@ list_disks()
 
 auto_partition()
 {
-	[ "$AUTO_INSTALL" = "force" ] || dialog --title " Auto Installer " --defaultno --yesno \
+	[ "$AUTO_INSTALL" = "force" ] || dialog --backtitle "$BACK_TITLE" --title " Auto Installer " --defaultno --yesno \
 		"\nYou have chosen the AUTO installation.\n\nThe installer will erase the whole /dev/$1 and install $OS_TITLE to it.\n\nThis is the last confirmation. Are you sure to do so?" 12 61
 	[ $? -ne 0 ] && rebooting
 
@@ -112,7 +115,7 @@ partition_drive()
 	done
 	count=`wc -l < $menufile`
 	if [ $count -eq 0 ]; then
-		dialog --title " Error " --msgbox \
+		dialog --backtitle "$BACK_TITLE" --title " Error " --msgbox \
 			"\nOK. There is no hard drive to edit partitions." 8 49
 		return 255
 	fi
@@ -134,7 +137,7 @@ partition_drive()
 			return 1
 		fi
 
-		dialog --title " Confirm " --defaultno --yesno \
+		dialog --backtitle "$BACK_TITLE" --title " Confirm " --defaultno --yes-label "Yes, switch to cgdisk" --no-label "No, continue to cfdisk" --yesno \
 "\n The setup will now redirect to the cfdisk program on drive /dev/$choice. \
 However, would you prefer to use the cgdisk program instead? \
 \n cgdisk is designed exclusively for GPT disks, while cfdisk can handle both MBR and GPT. \
@@ -193,7 +196,7 @@ select_dev()
 
 progress_bar()
 {
-	dialog --clear --title " $1 " --gauge "\n $2" 8 70
+	dialog --backtitle "$BACK_TITLE" --clear --title " $1 " --gauge "\n $2" 8 70
 }
 
 convert_fs()
@@ -244,7 +247,7 @@ format_fs()
 		}' | progress_bar "Formatting" "Formatting partition $1..."
 		convert_fs $1
 	elif blkid /dev/$1 | grep -q ext[23]; then
-		dialog --clear --title " Warning " --yesno \
+		dialog --backtitle "$BACK_TITLE" --clear --title " Warning " --yesno \
 			"\nYou chose to install android-x86 to an ext2/3 filesystem. We suggest you convert it to ext4 for better reliability and performance." 9 62
 		[ $? -eq 0 ] && convert_fs $1
 	fi
@@ -269,7 +272,7 @@ check_data_img()
 {
 	losetup /dev/loop7 data.img
 	if blkid /dev/loop7 | grep -q ext[23]; then
-		dialog --clear --title " Warning " --yesno \
+		dialog --backtitle "$BACK_TITLE" --clear --title " Warning " --yesno \
 			"\nYour data.img is an ext2/3 filesystem. We suggest you convert it to ext4 for better reliability." 8 58
 		[ $? -eq 0 ] && convert_fs loop7
 	fi
@@ -329,12 +332,12 @@ create_img()
 {
 	bname=`basename $2`
 	if [ -e $2 ]; then
-		dialog --title " Confirm " --defaultno --yesno \
+		dialog --backtitle "$BACK_TITLE" --title " Confirm " --defaultno --yesno \
 			"\n $bname exists. Overwrite it?" 7 38
 		[ $? -ne 0 ] && return 255
 		rm -f $2
 	fi
-	dialog --title " Question " --nook --nocancel --inputbox \
+	dialog --backtitle "$BACK_TITLE" --title " Question " --nook --nocancel --inputbox \
 		"\nPlease input the size of the $bname in MB:" 8 63 $1 2> $tempfile
 	size=`cat $tempfile`
 	[ 0$size -le 0 ] && size=2048
@@ -343,24 +346,24 @@ create_img()
 
 create_data_img()
 {
-	dialog --title " Confirm " --yesno \
-		"\nThe installer is going to create a disk image to save the user data. At least 2048MB free disk space is recommended.\n\nAre you sure to create the image?" 11 62
+	dialog --backtitle "$BACK_TITLE" --title " Confirm " --yesno \
+		"\nThe installer is going to create a disk image to save the user data. At least 4000MB free disk space is recommended.\n\nAre you sure to create the image?" 11 62
 
 	if [ $? -eq 0 ]; then
 		if create_img 2048 data.img; then
 			losetup /dev/loop6 data.img
 			mkfs.ext4 -L /data /dev/loop6 > /dev/tty6
 		fi
-		[ $? -ne 0 ] && dialog --msgbox "\n Failed to create data.img." 7 33
+		[ $? -ne 0 ] && dialog --backtitle "$BACK_TITLE" --msgbox "\n Failed to create data.img." 7 33
 	else
-		dialog --title " Warning " --msgbox \
+		dialog --backtitle "$BACK_TITLE" --title " Warning " --msgbox \
 			"\nOK. So data will be save to a RAMDISK(tmpfs), and lose after power off." 8 49
 	fi
 }
 
 try_upgrade()
 {
-	[ -d $1 ] && dialog --title "No install found to upgrade at: $1" --nocancel --pause "" 8 41 1 && return
+	[ -d $1 ] && dialog --backtitle "$BACK_TITLE" --title "No install found to upgrade at: $1" --nocancel --pause "" 8 41 1 && return
 
 	for d in hd/*; do
 		[ -n "`ls "$d"/system* 2> /dev/null`" ] && echo \"`basename $d`\" \"\"
@@ -424,7 +427,7 @@ install_to()
 	while [ 1 ]; do
 		format_fs $1
 		try_mount rw /dev/$1 /hd && break
-		dialog --clear --title " Error " --defaultno --yesno \
+		dialog --backtitle "$BACK_TITLE" --clear --title " Error " --defaultno --yesno \
 			"\n Cannot mount /dev/$1\n Do you want to format it?" 8 37
 		[ $? -ne 0 ] && return 255
 		FORCE_FORMAT=ext4
@@ -442,7 +445,7 @@ install_to()
 		get_part_info $1
 		if fdisk -l /dev/$disk | grep -q GPT; then
 			umount /hd
-			dialog --title " Warning " --defaultno --yesno \
+		dialog --backtitle "$BACK_TITLE" --title " Warning " --defaultno --yesno \
 				"\nFound GPT on /dev/$disk. The legacy GRUB can't be installed to GPT. Do you want to convert it to MBR?\n\nWARNING: This is a dangerous operation. You should backup your data first." 11 63
 			[ $? -eq 1 ] && rebooting
 			plist=$(sgdisk --print /dev/$disk | awk '/^  / { printf "%s:", $1 }' | sed 's/:$//')
@@ -577,7 +580,7 @@ install_to()
 			[ -d $f ] || chmod 644 $f
 		done
 		
-		dialog --infobox "\n Preparing install for OTA updates..." 5 27
+			dialog --backtitle "$BACK_TITLE" --infobox "\n Preparing install for OTA updates..." 5 27
 
 		mv kernel kernel_a
 		mv initrd.img initrd_a.img
@@ -600,7 +603,7 @@ install_to()
 		esac
 	fi
 
-	dialog --infobox "\n Syncing to disk..." 5 27
+	dialog --backtitle "$BACK_TITLE" --infobox "\n Syncing to disk..." 5 27
 	sync
 	cd /
 
@@ -633,7 +636,7 @@ install_hd()
 			dialog --title " Detecting... " --nocancel --pause "" 8 41 1
 			;;
 		*shell*)
-			dialog --clear --title " WARNING " --nocancel --pause "You are going to use AOSP's shell, if you want to go back to the installer please type exit" 12 41 8
+			dialog --backtitle "$BACK_TITLE" --clear --title " WARNING " --nocancel --pause "You are going to use AOSP's shell, if you want to go back to the installer please type exit" 12 41 8
 			/system/bin/sh 2>&1
 			;;
 		*)
@@ -652,14 +655,14 @@ do_install()
 	
 	until install_hd; do
 		if [ $retval -eq 255 ]; then
-			dialog --title ' Error! ' --yes-label Retry --no-label Reboot \
+			dialog --backtitle "$BACK_TITLE" --title ' Error! ' --yes-label Retry --no-label Reboot \
 				--yesno "\nInstallation failed! Either there's no more free space or something is wrong with the installer !" 8 51
 			[ $? -eq 1 ] && rebooting
 		fi
 	done
 
 	[ -n "$VESA" ] || runit="Run $OS_TITLE"
-	dialog --clear --title ' Congratulations! ' \
+	dialog --backtitle "$BACK_TITLE" --clear --title ' Congratulations! ' \
 		--menu "\n $OS_TITLE is installed successfully.\n " 11 51 13 \
 		"$runit" "" "Reboot" "" 2> $tempfile
 	case "`cat $tempfile`" in

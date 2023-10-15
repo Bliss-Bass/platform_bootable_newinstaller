@@ -3,6 +3,8 @@
 # By Chih-Wei Huang <cwhuang@linux.org.tw>
 # and Thorsten Glaser <tg@mirbsd.org>
 #
+# Modified by BlissLabs & Contributors
+#
 # License: GNU Public License
 # We explicitely grant the right to use the scripts
 # with Android-x86 project.
@@ -14,17 +16,17 @@ PATH=/sbin:/bin:/system/bin:/system/xbin:/vendor/bin:/system_ext/bin:/system/ven
 text_art()
 {
 cat << "EOF"
-      ___           ___                   ___           ___      
-     /\  \         /\__\      ___        /\  \         /\  \     
-    /::\  \       /:/  /     /\  \      /::\  \       /::\  \    
-   /:/\:\  \     /:/  /      \:\  \    /:/\ \  \     /:/\ \  \   
-  /::\~\:\__\   /:/  /       /::\__\  _\:\~\ \  \   _\:\~\ \  \  
- /:/\:\ \:\__\ /:/__/     __/:/\/__/ /\ \:\ \ \__\ /\ \:\ \ \__\ 
- \:\~\:\/:/  / \:\  \    /\/:/  /    \:\ \:\ \/__/ \:\ \:\ \/__/ 
-  \:\ \::/  /   \:\  \   \::/__/      \:\ \:\__\    \:\ \:\__\   
-   \:\/:/  /     \:\  \   \:\__\       \:\/:/  /     \:\/:/  /   
-    \::/__/       \:\__\   \/__/        \::/  /       \::/  /    
-     ~~            \/__/                 \/__/         \/__/     
+      ___           ___                   ___           ___
+     /\  \         /\__\      ___        /\  \         /\  \
+    /::\  \       /:/  /     /\  \      /::\  \       /::\  \
+   /:/\:\  \     /:/  /      \:\  \    /:/\ \  \     /:/\ \  \
+  /::\~\:\__\   /:/  /       /::\__\  _\:\~\ \  \   _\:\~\ \  \
+ /:/\:\ \:\__\ /:/__/     __/:/\/__/ /\ \:\ \ \__\ /\ \:\ \ \__\
+ \:\~\:\/:/  / \:\  \    /\/:/  /    \:\ \:\ \/__/ \:\ \:\ \/__/
+  \:\ \::/  /   \:\  \   \::/__/      \:\ \:\__\    \:\ \:\__\
+   \:\/:/  /     \:\  \   \:\__\       \:\/:/  /     \:\/:/  /
+    \::/__/       \:\__\   \/__/        \::/  /       \::/  /
+     ~~            \/__/                 \/__/         \/__/
 
 ===================================================
          Have A Truly Blissful Experience
@@ -36,8 +38,8 @@ bliss_feature()
 {
 	if [ "$INTERNAL_MOUNT" -gt "0" ]; then
 cat << "EOF"
-# WARNING: INTERNAL_MOUNT option is enabled, all the internal partitions 
-# will now be recognized as USBs if the supported filesystem is available 
+# WARNING: INTERNAL_MOUNT option is enabled, all the internal partitions
+# will now be recognized as USBs if the supported filesystem is available
 # and will create empty directories like Android, DCIM, Documents, etc.
 
 ## DO NOT PRESS "TAP TO FIX", IT WILL FORMAT THE DRIVE!
