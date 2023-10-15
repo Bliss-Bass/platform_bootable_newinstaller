@@ -152,8 +152,6 @@ fi
 # now running under a controlling tty; debug output from stderr into log file
 # boot up Android
 
-chmod 755 /sbin/mount.ntfs-3g
-
 error()
 {
 	echo $*
