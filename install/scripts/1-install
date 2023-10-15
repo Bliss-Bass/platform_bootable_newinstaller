@@ -23,6 +23,11 @@ rebooting()
 	reboot -f
 }
 
+restart_installer()
+{
+	dialog --backtitle "$BACK_TITLE" --title " Please Wait " --nocancel --pause "\n Restarting the installer..... " 10 41 1
+}
+
 auto_answer()
 {
 	echo "$answer" > $tempfile
@@ -654,6 +659,8 @@ do_install()
 	[ -n "$efi" ] && mount -t efivarfs none /sys/firmware/efi/efivars
 	
 	until install_hd; do
+		restart_installer
+
 		if [ $retval -eq 255 ]; then
 			dialog --backtitle "$BACK_TITLE" --title ' Error! ' --yes-label Retry --no-label Reboot \
 				--yesno "\nInstallation failed! Either there's no more free space or something is wrong with the installer !" 8 51
