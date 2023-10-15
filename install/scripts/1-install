@@ -14,6 +14,8 @@ menufile=/tmp/menu-$$
 CPIO=cpio
 OS_TITLE=${OS_TITLE:-Android-x86}
 BACK_TITLE="Made by Android-x86 Project, Modified by BlissLabs & Contributors"
+EFI_LABEL="BlissOS"
+INSTALL_LABEL="BlissOS"
 
 rebooting()
 {
@@ -279,10 +281,14 @@ format_fs()
 			;;
 	esac
 	if [ -n "$cmd" ]; then
+		dialog --backtitle "$BACK_TITLE" --title " Question " --nook --nocancel --inputbox \
+			"\nWould you like to customize the formatted drive name ? 
+\n\nYou can change it here or press Enter to skip:" 10 63 "$INSTALL_LABEL" 2> /tmp/install_drive_name
+
 		[ -n "$AUTO_INSTALL" ] || dialog --title " Confirm " --defaultno --yesno \
 			"\n You chose to format $1 to $choice.\n All data in that partition will be LOST.\n\n Are you sure to format the partition $1?" 10 59
 		[ $? -ne 0 ] && return 1
-		$cmd Android-x86 /dev/$1 | awk '{
+		$cmd `cat /tmp/install_drive_name` /dev/$1 | awk '{
 			# FIXME: very imprecise progress
 			if (match($0, "done"))
 				printf("%d\n", i+=33)
@@ -676,11 +682,15 @@ make_esp()
 			*)
 			;;
 	esac
-		if [ -n "$cmd" ]; then		
+		if [ -n "$cmd" ]; then
+			dialog --backtitle "$BACK_TITLE" --title " Question " --nook --nocancel --inputbox \
+			"\nWould you like to customize the formatted drive name ? 
+\n\nYou can change it here or press Enter to skip:" 10 63 "ESP" 2> /tmp/esp_drive_name
+
 			[ -n "$AUTO_INSTALL" ] || dialog --title " Confirm " --defaultno --yesno \
 				"\n You chose to format $1 to $choice.\n All data in that partition will be LOST.\n\n Are you sure to format the partition $1?" 10 59
 			[ $? -ne 0 ] && return 1
-			$cmd "ESP" /dev/$1 | awk '{
+			$cmd `cat /tmp/esp_drive_name` /dev/$1 | awk '{
 				# FIXME: very imprecise progress
 				if (match($0, "done"))
 					printf("%d\n", i+=33)
