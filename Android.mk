@@ -118,7 +118,7 @@ $(boot_dir): $(shell find $(LOCAL_PATH)/boot -type f | sort -r) $(systemimg) $(I
 	$(ACP) -pr $(dir $(<D)) $@
 	$(ACP) -pr $(dir $(<D))../install/grub2/efi $@
 	PATH="/sbin:/usr/sbin:/bin:/usr/bin"; \
-	img=$@/boot/grub/efi.img; dd if=/dev/zero of=$$img bs=1M count=4; \
+	img=$@/boot/grub/efi.img; dd if=/dev/zero of=$$img bs=3M count=5; \
 	mkdosfs -n EFI $$img; mmd -i $$img ::boot; \
 	mcopy -si $$img $@/efi ::; mdel -i $$img ::efi/boot/*.cfg
 

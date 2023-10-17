@@ -674,7 +674,10 @@ install_grub_efi()
 	source /grub2/scripts/grub_modules
 	
 	mkdir -p efi$efidir
-	cp -af grub2/efi/boot/* efi$efidir
+	cp -af grub2/efi/boot/bootia32.efi efi$efidir
+	cp -af grub2/efi/boot/BOOTx64.EFI efi$efidir
+	cp -af grub2/efi/boot/mmia32.efi efi$efidir
+	cp -af grub2/efi/boot/mmx64.efi efi$efidir
 	# Don't copy android.cfg to /EFI/$EFI_LABEL, make grub.cfg instead
 	find efi$efidir -name android.cfg -delete
 	mkdir -p /hd/boot/grub

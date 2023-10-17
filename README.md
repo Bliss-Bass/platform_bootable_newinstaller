@@ -273,6 +273,18 @@ shim-helpers-amd64-signed amd64 (1+15.7+1)
 
 https://packages.debian.org/trixie/amd64/shim-helpers-amd64-signed
 
+- grub2/efi/boot/grubx64.efi
+
+grub-efi-amd64-bin i386 (2.06-13)
+
+https://packages.debian.org/trixie/i386/grub-efi-amd64-bin
+
+- grub2/efi/boot/grubia32.efi
+
+grub-efi-ia32-bin i386 (2.06-13)
+
+https://packages.debian.org/trixie/i386/grub-efi-ia32-bin
+
 - refind/
 
 refind-bin all (0.14.0.2) (zip)
