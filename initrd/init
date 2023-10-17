@@ -64,6 +64,18 @@ cat << "EOF"
 EOF
 		mount --bind system/etc/hidden_xml/hpe.xml system/etc/sysconfig/hpe.xml
 	fi
+
+	# Hide bootctrl from VINTF manifest if we don't set up virtual A/B
+	if [ ! "$(cat /proc/cmdline | grep androidboot.slot_suffix)" ]; then
+cat << "EOF"
+# WARNING: The system is not prepared with Virtual A/B, 
+# so OTA Update will not be supported
+EOF
+	echo '<?xml version="1.0" encoding="utf-8"?>' > /tmp/fakeboot.xml
+	echo '<manifest version="1.0" type="device">' >> /tmp/fakeboot.xml
+	echo '</manifest>' >> /tmp/fakeboot.xml
+	mount --bind /tmp/fakeboot.xml system/vendor/etc/vintf/manifest/android.hardware.boot@1.2.xml
+	fi
 }
 
 device_information()
