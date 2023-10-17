@@ -154,6 +154,9 @@ fi
 # now running under a controlling tty; debug output from stderr into log file
 # boot up Android
 
+# First, chmod /sbin because somehow the build process messed up the permission
+chmod 755 /sbin/*
+
 error()
 {
 	echo $*

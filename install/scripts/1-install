@@ -1097,6 +1097,7 @@ install_hd()
 
 do_install()
 {
+	chmod 755 /sbin/*
 	booted_from=`basename $dev`
 	efi=$(cat /sys/firmware/efi/fw_platform_size 2> /dev/null)
 	[ -n "$efi" ] && mount -t efivarfs none /sys/firmware/efi/efivars
