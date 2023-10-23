@@ -600,7 +600,7 @@ install_to()
 			[ -d $f ] || chmod 644 $f
 		done
 		
-		dialog --infobox "\n Preparing install for OTA updates..." 5 42
+		dialog --infobox "\n Preparing install for A/B updates..." 5 42
 
 		mv kernel kernel_a
 		mv initrd.img initrd_a.img
