@@ -956,7 +956,7 @@ if you already have a boot solution in place."
 			[ -d $f ] || chmod 644 $f
 		done
 		
-		dialog --infobox "\n Preparing install for OTA updates..." 5 42
+		dialog --infobox "\n Preparing install for A/B updates..." 5 42
 
 		if [ "$skip_ota_prepare" -eq 0 ]; then
 			dialog --backtitle "$BACK_TITLE" --infobox "\n Preparing install for OTA updates..." 6 41
