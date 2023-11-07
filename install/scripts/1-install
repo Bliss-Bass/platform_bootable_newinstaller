@@ -662,7 +662,7 @@ install_grub_bios()
 	fi
 	sed -i "/fwsetup/d" /hd/boot/grub/android.cfg
 	grubcfg=/hd/boot/grub/grub.cfg
-	echo -e 'set timeout=5\nset debug_mode="(DEBUG mode)"' > $grubcfg
+	echo -e 'set timeout_style=menu\ntimeout=5\nset debug_mode="(DEBUG mode)"' > $grubcfg
 	echo -e "set kdir=/$asrc" >> $grubcfg
 	echo -e '\nsource /boot/grub/android.cfg' >> $grubcfg
 }
@@ -710,7 +710,7 @@ install_grub_efi()
 	[ -s /hd/boot/grub/grubenv ] || ( printf %-1024s "# GRUB Environment Block%" | sed 's/k%/k\n/; s/   /###/g' > /hd/boot/grub/grubenv )
 
 	echo -e "search.fs_uuid $fs_uuid root" > $grubcfg
-	echo -e 'set timeout=5\nset debug_mode="(DEBUG mode)"' >> $grubcfg
+	echo -e 'set timeout_style=menu\ntimeout=5\nset debug_mode="(DEBUG mode)"' >> $grubcfg
 	echo -e "set prefix=(\$root)'/boot/grub'" >> $grubcfg
 	echo -e "set kdir=/$asrc" >> $grubcfg
 	echo -e '\nsource $prefix/android.cfg' >> $grubcfg
