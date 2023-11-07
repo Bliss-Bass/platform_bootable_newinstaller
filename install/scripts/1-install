@@ -477,7 +477,7 @@ install_to()
 		sed -i "s|VER|$VER|; s|CMDLINE|$cmdline|; s|OS_TITLE|$OS_TITLE|; s|/kernel|/kernel_a|; s|/initrd.img|/initrd_a.img|" /hd/boot/grub/android.cfg
 		sed -i "/fwsetup/d" /hd/boot/grub/android.cfg
 		grubcfg=/hd/boot/grub/grub.cfg
-		echo -e 'set timeout=5\nset debug_mode="(DEBUG mode)"' > $grubcfg
+		echo -e 'set timeout_style=menu\nset timeout=5\nset debug_mode="(DEBUG mode)"' > $grubcfg
 		echo -e "set kdir=/$asrc" >> $grubcfg
 		echo -e '\nsource /boot/grub/android.cfg' >> $grubcfg
 		create_winitem
@@ -524,7 +524,7 @@ install_to()
 		sed -i "s|VER|$VER|; s|CMDLINE|$cmdline|; s|OS_TITLE|$OS_TITLE|; s|/kernel|/kernel_a|; s|/initrd.img|/initrd_a.img|" efi$efidir/android.cfg
 		[ -s efi/boot/grub/grubenv ] || ( printf %-1024s "# GRUB Environment Block%" | sed 's/k%/k\n/; s/   /###/g' > efi/boot/grub/grubenv )
 
-		echo -e 'set timeout=5\nset debug_mode="(DEBUG mode)"' > $grubcfg
+		echo -e 'set timeout_style=menu\nset timeout=5\nset debug_mode="(DEBUG mode)"' > $grubcfg
 		# Our grub-efi doesn't support ntfs directly.
 		# Copy boot files to ESP so grub-efi could read them
 		if [ "$fs" = "fuseblk" ]; then
