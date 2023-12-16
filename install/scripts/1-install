@@ -39,7 +39,7 @@ auto_answer()
 
 set_answer_if_auto()
 {
-	[ -n "$AUTO_INSTALL" ] && answer="$1"
+	[ -n "$OEM_INSTALL" ] && answer="$1"
 }
 
 adialog()
@@ -137,16 +137,28 @@ list_partitions()
 
 auto_partition()
 {
-	[ "$AUTO_INSTALL" = "force" ] || dialog --backtitle "$BACK_TITLE" --title " Auto Installer " --defaultno --yesno \
-		"\nYou have chosen the AUTO installation.\n\nThe installer will erase the whole /dev/$1 and install $OS_TITLE to it.\n\nThis is the last confirmation. Are you sure to do so?" 12 61
+	[ "$OEM_INSTALL" = "force" ] || [ "$OEM_INSTALL" = "mbr" ] || [ "$OEM_INSTALL" = "efi" ] || dialog --title " OEM Installer " --defaultno --yesno \
+		"\nYou have chosen the OEM installation.\n\nThe installer will erase the whole /dev/$1 and install $OS_TITLE to it.\n\nThis is the last confirmation. Are you sure to do so?" 12 61
 	[ $? -ne 0 ] && rebooting
 
-	if [ -z "$efi" ]; then
-		echo -e "o\nn\np\n1\n\n\nw\n" | fdisk /dev/$1
-		p=1
+	if [ -z "$efi" ] || [ "$OEM_INSTALL" = "mbr" ]; then
+		if echo -e "o\nn\np\n1\n\n\nw\n" | fdisk /dev/$1; then
+			echo 'FDISK: Partition created with fdisk'
+			p=1
+		elif sfdisk --delete /dev/$1; sfdisk -a -X linux /dev/$1; then # TRY
+			echo 'SFDISK: Partition created with sfdisk'
+			p=1
+		else # CATCH
+			echo 'SGDISK: Using sgdisk to create and convert to mbr instead'
+			sgdisk --zap-all /dev/$1; sgdisk --new=1::+500M --typecode=1:EF00 --largest-new=2 --typecode=2:8300 /dev/$1; plist=$(sgdisk --print /dev/$disk | awk '/^  / { printf "%s:", $1 }' | sed 's/:$//'); sgdisk --gpttombr=$plist /dev/$disk > /dev/tty6; p=2; until try_mount rw /dev/$1 /hd; do sleep 1; done
+		fi
+	elif [ "$OEM_INSTALL" = "efi" ]; then
+		sgdisk --zap-all /dev/$1
+		sgdisk --new=1::+500M --typecode=1:EF00 --largest-new=2 --typecode=2:8300 /dev/$1
+		p=2
 	else
 		sgdisk --zap-all /dev/$1
-		sgdisk --new=1::+260M --typecode=1:EF00 --largest-new=2 --typecode=2:8300 /dev/$1
+		sgdisk --new=1::+500M --typecode=1:EF00 --largest-new=2 --typecode=2:8300 /dev/$1
 		p=2
 	fi > /dev/tty6
 
@@ -154,7 +166,9 @@ auto_partition()
 		answer=`find_partition $1 $p`
 		[ -n "$answer" ] && break
 	done
-	[ -n "$efi" ] && mkdosfs -n EFI /dev/`find_partition $1 1`
+	if [ -n "$efi" ] || [ "$OEM_INSTALL" = "efi" ]; then
+	    mkdosfs -n EFI /dev/`find_partition $1 1`
+	fi
 }
 
 partition_drive()
@@ -185,10 +199,10 @@ partition_drive()
 		return 255
 	fi
 
-	if [ $count -eq 1 -o "$AUTO_INSTALL" = "force" ]; then
+	if [ $count -eq 1 -o "$OEM_INSTALL" = "force" -o "$OEM_INSTALL" = "mbr" -o "$OEM_INSTALL" = "efi" ]; then
 		drive=1
 	else
-		drive=`basename $AUTO_INSTALL`
+		drive=`basename $OEM_INSTALL`
 	fi
 	choice=`awk -v n=$drive '{ if (n == NR || n == $1) print $1 }' $menufile`
 	if [ -b /dev/$choice ]; then
@@ -197,11 +211,13 @@ partition_drive()
 		choose "Choose Drive" "Please select a drive to edit partitions:\n\n* - Installer source"
 	fi
 	if [ $retval -eq 0 ]; then
-		if [ -n "$AUTO_INSTALL" ]; then
+		if [ -n "$OEM_INSTALL" ]; then
 			auto_partition $choice
 			return 1
 		fi
-
+		if fdisk -l /dev/$choice | grep -q GPT; then
+			part_tool=cgdisk
+		elif fdisk -l /dev/$choice | grep -q "doesn't"; then
 		dialog --backtitle "$BACK_TITLE" --title " Confirm " --defaultno --yes-label "Yes, switch to cgdisk" --no-label "No, continue to cfdisk" --yesno \
 "\n The setup will now redirect to the cfdisk program on drive /dev/$choice. \
 However, would you prefer to use the cgdisk program instead? \
@@ -210,7 +226,10 @@ This is merely a preference; if you wish, we can redirect to cgdisk instead. \
 Select 'Yes' to switch to cgdisk, or 'No' to remain with cfdisk. \
 \n \
 \n Tips : If you install on a VM or on a fresh new drive, on cfdisk 'dos' is for MBR, 'gpt' is for GPT" 16 60
-		[ $? -eq 0 ] && part_tool=cgdisk || part_tool=cfdisk
+			[ $? -eq 0 ] && part_tool=cgdisk || part_tool=cfdisk
+		else
+			part_tool=cfdisk
+		fi
 		$part_tool /dev/$choice
 		if [ $? -eq 0 ]; then
 			retval=1
@@ -299,7 +318,7 @@ format_fs()
 			"\nWould you like to customize the formatted drive name ? 
 \n\nYou can change it here or press Enter to skip:" 10 63 "$INSTALL_LABEL" 2> /tmp/install_drive_name
 
-		[ -n "$AUTO_INSTALL" ] || dialog --colors --backtitle "$BACK_TITLE" --title " Confirm " --defaultno --yesno \
+		[ -n "$OEM_INSTALL" ] || dialog --colors --backtitle "$BACK_TITLE" --title " Confirm " --defaultno --yesno \
 			"\nYou chose to format $1 to $choice.\n\Z1THE FORMAT PROCESS WILL START IMMEDIATELY. 
 ALL DATA IN THIS PARTITION WILL BE LOST.\Zn\n\nAre you sure to format the partition $1?" 10 59
 		[ $? -ne 0 ] && cancel_format=1 && return 1
@@ -319,7 +338,7 @@ ALL DATA IN THIS PARTITION WILL BE LOST.\Zn\n\nAre you sure to format the partit
 				"OTA Update is not available on NTFS partition, are you sure you want to choose this drive ?" 6 59
 		[ $? -ne 0 ] && cancel_format=1 || cancel_format=0
 
-		[ -n "$AUTO_INSTALL" ] || dialog --backtitle "$BACK_TITLE" --title " Confirm " --defaultno --yesno \
+		[ -n "$OEM_INSTALL" ] || dialog --backtitle "$BACK_TITLE" --title " Confirm " --defaultno --yesno \
 			"\n Are you sure you want to install on $1 ?" 8 48
 		[ $? -ne 0 ] && cancel_format=1 || cancel_format=0
 	fi
@@ -803,7 +822,7 @@ install_process()
 	fs=`cat /proc/mounts | grep /dev/$1 | awk '{ print $3 }'`
 	fs_uuid=`blkid /dev/$1 | awk -F '\"' '{print $4}'`
 	fs_partuuid=`fdisk -x | grep /dev/$1 | awk '{ print $6 }'`
-	cmdline=`sed "s|\(initrd.*img\s*\)||; s|quiet\s*||; s|\(vga=\w\+\?\s*\)||; s|\(DPI=\w\+\?\s*\)||; s|\(AUTO_INSTALL=\w\+\?\s*\)||; s|\(INSTALL=\w\+\?\s*\)||; s|\(SRC=\S\+\?\s*\)||; s|\(DEBUG=\w\+\?\s*\)||; s|\(BOOT_IMAGE=\S\+\?\s*\)||; s|\(iso-scan/filename=\S\+\?\s*\)||; s|[[:space:]]*$||" /proc/cmdline`
+	cmdline=`sed "s|\(initrd.*img\s*\)||; s|quiet\s*||; s|\(vga=\w\+\?\s*\)||; s|\(DPI=\w\+\?\s*\)||; s|\(OEM_INSTALL=\w\+\?\s*\)||; s|\(INSTALL=\w\+\?\s*\)||; s|\(SRC=\S\+\?\s*\)||; s|\(DEBUG=\w\+\?\s*\)||; s|\(BOOT_IMAGE=\S\+\?\s*\)||; s|\(iso-scan/filename=\S\+\?\s*\)||; s|[[:space:]]*$||" /proc/cmdline`
 
 	[ -n "$INSTALL_PREFIX" ] && asrc=$INSTALL_PREFIX || asrc=android-$VER
 	set_answer_if_auto 1
@@ -850,7 +869,7 @@ install_process()
 			esp=$esp_chosen
 			get_part_info $boot
 		else
-			[ -z "$AUTO_INSTALL" -o -n "$AUTO_UPDATE" ] && for i in `list_disks`; do
+			[ -z "$OEM_INSTALL" -o -n "$AUTO_UPDATE" ] && for i in `list_disks`; do
 				disk=`basename $i`
 				esp=`sgdisk --print /dev/$disk 2> /dev/null | grep EF00 | awk '{print $1}'`
 				[ -n "$esp" ] && boot=`find_partition $disk $esp` && break
@@ -889,7 +908,11 @@ if you already have a boot solution in place."
 		create_winitem_uefi
 	fi
 
-	try_upgrade hd/$asrc
+	if [ "$OEM_INSTALL" = "force" ] || [ "$OEM_INSTALL" = "mbr" ] || [ "$OEM_INSTALL" = "efi" ]; then
+		echo "OEM install forcing is enabled, skipping upgrade..."
+	else
+		try_upgrade hd/$asrc
+	fi
 
 	! test -f hd/$asrc/system.img -o -d hd/$asrc/system
 	sysimg="mnt/$SRC/system.img"
@@ -988,7 +1011,7 @@ make_esp()
 			"\nWould you like to customize the formatted drive name ? 
 \n\nYou can change it here or press Enter to skip:" 10 63 "ESP" 2> /tmp/esp_drive_name
 
-			[ -n "$AUTO_INSTALL" ] || dialog --colors --backtitle "$BACK_TITLE" --title " Confirm " --defaultno --yesno \
+			[ -n "$OEM_INSTALL" ] || dialog --colors --backtitle "$BACK_TITLE" --title " Confirm " --defaultno --yesno \
 			"\nYou chose to format $1 to $choice.\n\Z1THE FORMAT PROCESS WILL START IMMEDIATELY. 
 ALL DATA IN THIS PARTITION WILL BE LOST.\Zn\n\nAre you sure to format the partition $1?" 10 59
 			[ $? -ne 0 ] && return 1
@@ -998,7 +1021,7 @@ ALL DATA IN THIS PARTITION WILL BE LOST.\Zn\n\nAre you sure to format the partit
 					printf("%d\n", i+=33)
 			}' | progress_bar "Formatting" "Formatting partition $1..."
 		else
-			[ -n "$AUTO_INSTALL" ] || dialog --backtitle "$BACK_TITLE" --title " Confirm " --defaultno --yesno \
+			[ -n "$OEM_INSTALL" ] || dialog --backtitle "$BACK_TITLE" --title " Confirm " --defaultno --yesno \
 				"\n Are you sure you want to pick $1 as ESP ? \n\n You can always pick again if you choose 'Restart the installer'" 10 75
 			[ $? -ne 0 ] && return 1
 		fi
@@ -1076,13 +1099,13 @@ initialize_hd()
 
 install_hd()
 {
-	case "$AUTO_INSTALL" in
+	case "$OEM_INSTALL" in
 		[Uu]*)
 			answer=${AUTO_UPDATE:-$(blkid | grep -v loop | grep -v iso9660 | sort | grep Android-x86 | cut -d: -f1 | head -1)}
 			answer=${answer:-$(blkid | grep -v loop | sort | grep ext4 | cut -d: -f1 | head -1)}
 			[ -b "$answer" -o -b /dev/$answer ] && answer=`basename $answer` || answer=
 			AUTO_UPDATE=${answer:-$AUTO_UPDATE}
-			[ -z "$AUTO_UPDATE" ] && AUTO_INSTALL=
+			[ -z "$AUTO_UPDATE" ] && OEM_INSTALL=
 			;;
 		*)
 			[ -z "$answer" ] && set_answer_if_auto Create
