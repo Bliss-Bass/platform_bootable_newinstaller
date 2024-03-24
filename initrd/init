@@ -113,6 +113,33 @@ EOF
 			done
 		fi
 	fi
+
+	# Bootanimation from data
+	# This change will let us place a bootanimation.zip in data/misc/bootanimation.zip
+	# and if found, will bind mount it to system/media/bootanimation.zip
+
+	if [ "$ADDON_BOOTANIMATION" -gt "0" ]; then
+cat << "EOF"
+# WARNING: ADDON_BOOTANIMATION is overriding the default bootanimation.zip
+# This override might not work if you are using systemless root
+EOF
+		# Copy bootanimation.zip
+		if [ -f data/misc/bootanimation.zip ]; then
+			if [-f system/media/bootanimation.zip ]; then
+				# bind mount copied bootanimation.zip to system
+				mount --bind data/misc/bootanimation.zip system/media/bootanimation.zip
+			elif [ -f system/product/media/bootanimation.zip ]; then
+				# bind mount copied bootanimation.zip to product
+				mount --bind data/misc/bootanimation.zip system/product/media/bootanimation.zip
+			else
+cat << "EOF"
+# Bootanimation.zip not found in system/media or system/product/media
+# Bootanimation.zip will not be bind mounted
+EOF
+			fi
+		fi
+		
+	fi
 }
 
 device_information()
