@@ -15,7 +15,7 @@ touch $Changelog
 
 # Print something to build output
 echo ${bldppl}"Generating changelog..."${txtrst}
-for i in $(seq 30);
+for i in $(seq 90);
 do
 export After_Date=`/bin/date --date="$i days ago" +%F`
 k=$(expr $i - 1)
