@@ -126,7 +126,21 @@ device_information()
 	VENDOR=$(cat $DMIPATH/sys_vendor)
 	SERIALNO=$(cat $DMIPATH/product_serial)
 
+	DEFAULT_SERIAL_NUMBERS="System Serial Number:Default string:0123456789:1234567890:123456789:00000000:XXXXXXXX:To be filled by O.E.M.:ABCDEF0123456789"
+
 	touch /tmp/device.prop
+
+	if echo "$DEFAULT_SERIAL_NUMBERS" | grep -q "$SERIALNO"; then
+		echo ro.bliss.factory.serialnumber="$SERIALNO" >> /tmp/device.prop
+		PRODUCT_UUID=$(cat /sys/class/dmi/id/product_uuid)
+		UUID=$(dmidecode -t 4 | grep ID | sed 's/.*ID://;s/ //g')
+		COMBINED_STRING="$PRODUCT_UUID$UUID"
+		FINALSERIALNO=$(echo -n "$COMBINED_STRING" | sha256sum | cut -c1-15)
+	fi
+
+	if [ -n "$FINALSERIALNO" ]; then
+		SERIALNO="GSN-$FINALSERIALNO"
+	fi
 
 	case "$VENDOR" in
 		*LENOVO*|*Lenovo*)
