@@ -153,7 +153,7 @@ device_information()
 	VENDOR=$(cat $DMIPATH/sys_vendor)
 	SERIALNO=$(cat $DMIPATH/product_serial)
 
-	DEFAULT_SERIAL_NUMBERS="System Serial Number:Default string:0123456789:1234567890:123456789:00000000:XXXXXXXX:To be filled by O.E.M.:ABCDEF0123456789"
+	DEFAULT_SERIAL_NUMBERS="System Serial Number:Default string:0123456789:1234567890:123456789:00000000:XXXXXXXX:To be filled by O.E.M.:ABCDEF0123456789:Type1 - 123456789"
 
 	touch /tmp/device.prop
 
