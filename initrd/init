@@ -113,6 +113,9 @@ EOF
 			done
 		fi
 	fi
+}
+
+addon_bootanimation() {
 
 	# Bootanimation from data
 	# This change will let us place a bootanimation.zip in data/misc/bootanimation.zip
@@ -138,7 +141,31 @@ cat << "EOF"
 EOF
 			fi
 		fi
-		
+	fi
+}
+
+addon_bassinit() {
+
+	# init.bass-vendor.rc from data
+	# This change will let us place a init.bass-vendor.rc in data/vendor/etc/init/
+	# and if found, will bind mount it to vendor/etc/init/init.bass-vendor.rc
+
+	if [ "$ADDON_BASSINIT" -gt "0" ]; then
+cat << "EOF"
+# WARNING: ADDON_BASSINIT is being used to override the default Bass OS init
+# This override might not work if you are using systemless root
+EOF
+		# bind init.bass-vendor.rc
+		if [ -f data/vendor/etc/init/init.bass-vendor.rc ]; then
+			if [-f vendor/etc/init/init.bass-vendor.rc ]; then
+				mount --bind data/vendor/etc/init/init.bass-vendor.rc vendor/etc/init/init.bass-vendor.rc
+			else
+cat << "EOF"
+# init.bass-vendor.rc not found in data/vendor/etc/init/
+# init.bass-vendor.rc will not be bind mounted
+EOF
+			fi
+		fi
 	fi
 }
 
@@ -153,7 +180,7 @@ device_information()
 	VENDOR=$(cat $DMIPATH/sys_vendor)
 	SERIALNO=$(cat $DMIPATH/product_serial)
 
-	DEFAULT_SERIAL_NUMBERS="System Serial Number:Default string:0123456789:1234567890:123456789:00000000:XXXXXXXX:To be filled by O.E.M.:ABCDEF0123456789:Type1 - 123456789"
+	DEFAULT_SERIAL_NUMBERS="System Serial Number:Default string:0123456789:1234567890:123456789:00000000:XXXXXXXX:To be filled by O.E.M.:ABCDEF0123456789:Type1 - 123456789:0:0123456789ABCDEF"
 
 	touch /tmp/device.prop
 
@@ -527,6 +554,8 @@ setup_dpi
 post_detect
 feature_input_ports
 addon_idc
+addon_bootanimation
+addon_bassinit
 
 if [ 0$DEBUG -gt 1 ]; then
 	echo -e "\nUse Alt-F1/F2/F3 to switch between virtual consoles"
