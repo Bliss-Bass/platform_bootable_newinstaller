@@ -93,6 +93,8 @@ initrdimage: $(INITRD_RAMDISK)
 
 INSTALLED_RADIOIMAGE_TARGET += $(INITRD_RAMDISK)
 INSTALLER_BIN := $(TARGET_INSTALLER_OUT)/sbin/efibootmgr
+$(INSTALLER_BIN):
+	mkdir -p $(TARGET_INSTALLER_OUT)/sbin; $(ACP) $(LOCAL_PATH)/install/sbin/efibootmgr $(TARGET_INSTALLER_OUT)/sbin
 INSTALL_RAMDISK := $(PRODUCT_OUT)/install.img
 $(INSTALL_RAMDISK): $(wildcard $(LOCAL_PATH)/install/*/* $(LOCAL_PATH)/install/*/*/*/*) $(INSTALLER_BIN) | $(MKBOOTFS)
 	$(if $(TARGET_INSTALL_SCRIPTS),mkdir -p $(TARGET_INSTALLER_OUT)/scripts; $(ACP) -p $(TARGET_INSTALL_SCRIPTS) $(TARGET_INSTALLER_OUT)/scripts)
