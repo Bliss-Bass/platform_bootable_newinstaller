@@ -1,0 +1,27 @@
+#!/usr/bin/bash
+
+[ "$2" ] || exit 1
+file=$1
+size=$2
+dir=$(dirname "$1")
+
+file_postfix=.${file##*.}
+[ "$file_postfix" = ".$file" ] && file_postfix=
+
+# check if filesystem is case-insensitive
+# create 2 folders with the same name, one with uppercase, one with lowercase
+
+cd "$dir"
+mkdir _test
+if mkdir _TEST; then
+	rm -rf _TEST
+	flags="bs=1 count=0 seek=${size}M"
+else
+	flags="bs=1M count=${size}"
+fi
+rm -rf _test
+
+for slot in _a _b; do
+	# shellcheck disable=SC2086
+	dd if=/dev/zero $flags of="${file%.*}${slot}${file_postfix}"
+done

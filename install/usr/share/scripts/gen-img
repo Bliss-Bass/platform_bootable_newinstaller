@@ -1,0 +1,40 @@
+#!/usr/bin/bash
+
+cd "$1"
+
+mkdir _test
+if mkdir _TEST; then
+	rm -rf _TEST
+	is_linux_fs=true
+else
+	is_linux_fs=false
+fi
+rm -rf _test
+
+_dd() {
+	local target=$1 size=$2 flags
+	if $is_linux_fs; then
+		flags="bs=1 count=0 seek=${size}M"
+	else
+		flags="bs=1M count=${size}"
+	fi
+	dd if=/dev/zero of="$target" $flags
+}
+
+_dd "$1"/misc.img 10
+
+mkdir -p "$1"/{data,boot}
+
+if [ "$2" = "True" ] || [ $is_linux_fs = false ]; then
+	rm -rf "$1"/data
+
+	max_size=$(($(busybox df -m "$1" | awk '{print $4}' | tail -1) - 4096))
+	size=$3
+	if [ "$size" = 0 ] || [ "$size" -gt "$max_size" ]; then
+		size=$max_size
+	fi
+
+	_dd "$1"/data.img "$size"
+
+	mkfs.ext4 -L "userdata" "$1"/data.img
+fi

@@ -24,97 +24,28 @@ else
 RELEASE_OS_TITLE := $(RELEASE_OS_TITLE)
 endif
 
-include $(CLEAR_VARS)
-LOCAL_IS_HOST_MODULE := true
-LOCAL_SRC_FILES := rpm/qemu-android
-LOCAL_MODULE := $(notdir $(LOCAL_SRC_FILES))
-LOCAL_MODULE_CLASS := EXECUTABLES
-LOCAL_POST_INSTALL_CMD := $(hide) sed -i "s|CMDLINE|$(BOARD_KERNEL_CMDLINE)|" $(HOST_OUT_EXECUTABLES)/$(LOCAL_MODULE)
 include $(BUILD_PREBUILT)
-
-include $(CLEAR_VARS)
-
-LOCAL_MODULE := iso_from_target_files
-LOCAL_SRC_FILES := bin/iso_from_target_files
-LOCAL_MODULE_CLASS := EXECUTABLES
-LOCAL_MODULE_PATH := $(HOST_OUT)/bin
-
-include $(BUILD_PREBUILT)
-
-.PHONY: iso_scripts
-iso_scripts: iso_from_target_files
 
 VER ?= $$(date "+%Y-%m-%d")
 
-# use squashfs or erofs for iso, unless explictly disabled
-ifneq ($(USE_SQUASHFS),0)
-MKSQUASHFS := $(HOST_OUT_EXECUTABLES)/mksquashfs$(HOST_EXECUTABLE_SUFFIX)
+install_dir := $(LOCAL_PATH)/install
+install_lib_dir := $(LOCAL_PATH)/install_lib
 
-define build-squashfs-target
-	$(hide) $(MKSQUASHFS) $(1) $(2) -noappend -comp zstd
-endef
+ifneq ($(shell test -d $(install_lib_dir) && echo exists), exists)
+    $(error install_lib does not exist, have you run the download script yet ?)
 endif
 
-ifneq ($(USE_EROFS),0)
-MKEROFS := $(HOST_OUT_EXECUTABLES)/make_erofs$(HOST_EXECUTABLE_SUFFIX)
-
-define build-erofs-target
-	$(hide) $(MKEROFS) -zlz4hc -C65536 $(2) $(systemimage_intermediates)
-endef
-endif
-
-initrd_dir := $(LOCAL_PATH)/initrd
-initrd_bin := \
-	$(initrd_dir)/init \
-	$(wildcard $(initrd_dir)/*/*)
-
-ifneq ($(USE_SQUASHFS),0)
-systemimg  := $(PRODUCT_OUT)/system.$(if $(MKSQUASHFS),sfs,img)
-else ifneq ($(USE_EROFS),0)
-systemimg  := $(PRODUCT_OUT)/system.$(if $(MKEROFS),efs,img)
-else
-systemimg  := $(PRODUCT_OUT)/system.img
-endif
-
-TARGET_INITRD_OUT := $(PRODUCT_OUT)/initrd
-INITRD_RAMDISK := $(TARGET_INITRD_OUT).img
-$(INITRD_RAMDISK): $(initrd_bin) $(systemimg) $(TARGET_INITRD_SCRIPTS) | $(ACP) $(MKBOOTFS)
-	$(hide) rm -rf $(TARGET_INITRD_OUT)
-	mkdir -p $(addprefix $(TARGET_INITRD_OUT)/,android apex efi hd iso lib mnt proc scripts sfs sys tmp)
-	$(if $(TARGET_INITRD_SCRIPTS),$(ACP) -p $(TARGET_INITRD_SCRIPTS) $(TARGET_INITRD_OUT)/scripts)
-	ln -s /bin/ld-linux.so.2 $(TARGET_INITRD_OUT)/lib
-	echo "VER=$(VER)" > $(TARGET_INITRD_OUT)/scripts/00-ver
-	$(if $(RELEASE_OS_TITLE),echo "OS_TITLE=$(RELEASE_OS_TITLE)" >> $(TARGET_INITRD_OUT)/scripts/00-ver)
-	$(if $(INSTALL_PREFIX),echo "INSTALL_PREFIX=$(INSTALL_PREFIX)" >> $(TARGET_INITRD_OUT)/scripts/00-ver)
-	$(MKBOOTFS) $(<D) $(TARGET_INITRD_OUT) | gzip -9 > $@
-
-.PHONY: initrdimage
-initrdimage: $(INITRD_RAMDISK)
-
-INSTALLED_RADIOIMAGE_TARGET += $(INITRD_RAMDISK)
-INSTALLER_BIN := $(TARGET_INSTALLER_OUT)/sbin/efibootmgr
-$(INSTALLER_BIN):
-	mkdir -p $(TARGET_INSTALLER_OUT)/sbin; $(ACP) $(LOCAL_PATH)/install/sbin/efibootmgr $(TARGET_INSTALLER_OUT)/sbin
+TARGET_INSTALL_OUT := $(PRODUCT_OUT)/install
 INSTALL_RAMDISK := $(PRODUCT_OUT)/install.img
-$(INSTALL_RAMDISK): $(wildcard $(LOCAL_PATH)/install/*/* $(LOCAL_PATH)/install/*/*/*/*) $(INSTALLER_BIN) | $(MKBOOTFS)
-	$(if $(TARGET_INSTALL_SCRIPTS),mkdir -p $(TARGET_INSTALLER_OUT)/scripts; $(ACP) -p $(TARGET_INSTALL_SCRIPTS) $(TARGET_INSTALLER_OUT)/scripts)
-	$(MKBOOTFS) $(dir $(dir $(<D))) $(TARGET_INSTALLER_OUT) | gzip -9 > $@
+$(INSTALL_RAMDISK): $(wildcard $(LOCAL_PATH)/install/*/* $(LOCAL_PATH)/install/*/*/*/*) | $(ACP) $(HOST_OUT_EXECUTABLES)/toybox
+	$(hide) rm -rf $(TARGET_INSTALL_OUT)
+	mkdir -p $(addprefix $(TARGET_INSTALL_OUT)/,android apex dev proc sys tmp etc data cdrom boot source hd)
+	touch $(addprefix $(TARGET_INSTALL_OUT)/,etc/fstab)
+	$(ACP) -dpr $(install_dir)/* $(install_lib_dir)/* $(TARGET_INSTALL_OUT)
+	cd $(TARGET_INSTALL_OUT); find . | $(HOST_OUT_EXECUTABLES)/toybox cpio -o | gzip -9 > $@; cd -
 
 .PHONY: installimage
 installimage: $(INSTALL_RAMDISK)
-
-boot_dir := $(PRODUCT_OUT)/boot
-$(boot_dir): $(shell find $(LOCAL_PATH)/boot -type f | sort -r) $(systemimg) $(INSTALL_RAMDISK) $(GENERIC_X86_CONFIG_MK) | $(ACP)
-	$(hide) rm -rf $@
-	$(ACP) -pr $(dir $(<D)) $@
-	$(ACP) -pr $(dir $(<D))../install/grub2/efi $@
-	PATH="/sbin:/usr/sbin:/bin:/usr/bin"; \
-	img=$@/boot/grub/efi.img; dd if=/dev/zero of=$$img bs=3M count=5; \
-	mkdosfs -n EFI $$img; mmd -i $$img ::boot; \
-	mcopy -si $$img $@/efi ::; mdel -i $$img ::efi/boot/*.cfg
-
-BUILT_IMG := $(addprefix $(PRODUCT_OUT)/,initrd.img install.img) $(systemimg)
-BUILT_IMG += $(if $(TARGET_PREBUILT_KERNEL),$(TARGET_PREBUILT_KERNEL),$(PRODUCT_OUT)/kernel)
 
 # Grab branch names
 KRNL := $(shell cd $(BUILD_TOP)/kernel ; make kernelversion)
@@ -176,48 +107,13 @@ else
 ROM_VENDOR_VERSION := $(BLISS_BUILD_ZIP)
 endif
 
-ISO_IMAGE := $(PRODUCT_OUT)/$(ROM_VENDOR_VERSION).iso
-$(ISO_IMAGE): $(boot_dir) $(BUILT_IMG)
+CHANGELOG := $(PRODUCT_OUT)/$(ROM_VENDOR_VERSION).iso
+$(CHANGELOG): $(boot_dir) $(INSTALL_RAMDISK)
 	# Generate Changelog
 	bash bootable/newinstaller/tools/changelog
 	$(hide) mv Changelog.txt $(PRODUCT_OUT)/Changelog-$(ROM_VENDOR_VERSION).txt
-	@echo ----- Making iso image ------
-	$(hide) sed -i "s|\(Installation CD\)\(.*\)|\1 $(VER)|; s|CMDLINE|$(BOARD_KERNEL_CMDLINE)|" $</isolinux/isolinux.cfg
-	$(hide) sed -i "s|VER|$(VER)|; s|CMDLINE|$(BOARD_KERNEL_CMDLINE)|" $</efi/boot/android.cfg
-	sed -i "s|OS_TITLE|$(if $(RELEASE_OS_TITLE),$(RELEASE_OS_TITLE),Android-x86)|" $</isolinux/isolinux.cfg $</efi/boot/android.cfg
-	PATH="/sbin:/usr/sbin:/bin:/usr/bin"; \
-	which xorriso > /dev/null 2>&1 && GENISOIMG="xorriso -as mkisofs" || GENISOIMG=genisoimage; \
-	$$GENISOIMG -vJURT -b isolinux/isolinux.bin -c isolinux/boot.cat \
-		-no-emul-boot -boot-load-size 4 -boot-info-table -eltorito-alt-boot -e boot/grub/efi.img -no-emul-boot \
-		-input-charset utf-8 -V "$(if $(RELEASE_OS_TITLE),$(RELEASE_OS_TITLE),Android-x86) $(VER) ($(TARGET_ARCH))" -o $@ $^
-	$(hide) PATH="/sbin:/usr/sbin:/bin:/usr/bin" isohybrid --uefi $@
-	$(hide) $(SHA256) $(ISO_IMAGE) | sed "s|$(PRODUCT_OUT)/||" > $(ISO_IMAGE).sha256
-	@echo -e ""
-	@echo -e ${CL_CYN}"===========-$(RELEASE_OS_TITLE) Package Complete-==========="${CL_RST}
-	@echo -e ${CL_CYN}"Zip: "${CL_MAG} $(ISO_IMAGE)${CL_RST}
-	@echo -e ${CL_CYN}"SHA256: "${CL_MAG}" `cat $(ISO_IMAGE).sha256 | cut -d ' ' -f 1`"${CL_RST}
-	@echo -e ${CL_CYN}"Size:"${CL_MAG}" `ls -lah $(ISO_IMAGE) | cut -d ' ' -f 5`"${CL_RST}
-	@echo -e ${CL_CYN}"==============================================="${CL_RST}
-	@echo -e ${CL_CYN}"Thank you for using Bliss-Bass for your Product"${CL_RST}
-	@echo -e ${CL_CYN}"==============================================="${CL_RST}
-	@echo -e ""
-	@echo -e "\n\n$@ is built successfully.\n\n"
-	@echo -e ""
 
-rpm: $(wildcard $(LOCAL_PATH)/rpm/*) $(BUILT_IMG)
-	@echo ----- Making an rpm ------
-	OUT=$(abspath $(PRODUCT_OUT)); mkdir -p $$OUT/rpm/BUILD; rm -rf $$OUT/rpm/RPMS/*; $(ACP) $< $$OUT; \
-	echo $(VER) | grep -vq rc; EPOCH=$$((-$$? + `echo $(VER) | cut -d. -f1`)); \
-	PATH="/sbin:/usr/sbin:/bin:/usr/bin"; \
-	rpmbuild -bb --target=$(if $(filter x86,$(TARGET_ARCH)),i686,x86_64) -D"cmdline $(BOARD_KERNEL_CMDLINE)" \
-		-D"_topdir $$OUT/rpm" -D"_sourcedir $$OUT" -D"systemimg $(notdir $(systemimg))" -D"ver $(VER)" -D"epoch $$EPOCH" \
-		$(if $(BUILD_NAME_VARIANT),-D"name $(BUILD_NAME_VARIANT)") \
-		-D"install_prefix $(if $(INSTALL_PREFIX),$(INSTALL_PREFIX),android-$(VER))" $(filter %.spec,$^); \
-	mv $$OUT/rpm/RPMS/*/*.rpm $$OUT
-
-.PHONY: iso_img usb_img efi_img rpm
-iso_img: $(ISO_IMAGE)
-usb_img: $(ISO_IMAGE)
-efi_img: $(ISO_IMAGE)
+.PHONY: changelog
+changelog: $(CHANGELOG)
 
 endif

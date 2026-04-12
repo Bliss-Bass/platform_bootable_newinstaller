@@ -1,0 +1,9 @@
+#!/bin/sh
+# shellcheck shell=ash
+
+grep "\s${1%/}[/ ]" /proc/mounts |
+	cut -d' ' -f2 |
+	sort -fur |
+	while read -r mnt; do
+		umount "$@" "$mnt"
+	done

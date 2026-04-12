@@ -1,0 +1,22 @@
+#!/usr/bin/bash
+# shellcheck disable=SC2086,SC2001,SC2154,SC1091
+
+ROOT=$1
+shift
+
+for f in "$@"; do
+  case "$f" in
+  *=*) eval "export $(echo "${f%%=*}" | sed -r "s/_/__/g;s/./_/g")='${f##+=}'" ;;
+  *) ;;
+  esac
+done
+
+. "/usr/share/grub/grub-mkconfig_lib"
+. /etc/default/grub
+
+cat <<EOF >"${ROOT}/${androidboot_bootctrl__bootcfg:="boot/ab.env.cfg"}"
+cmdline="
+	androidboot.slot_suffix=_a
+	androidboot.mode=normal
+"
+EOF

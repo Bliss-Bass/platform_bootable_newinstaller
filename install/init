@@ -1,0 +1,94 @@
+#!/bin/bash
+#
+# By Shadichy <shadichy@blisslabs.org>
+# Last updated 2026/04/12
+#
+# License: GNU Public License
+# We explicitly grant the right to use the scripts
+# with Android-x86 project.
+#
+
+export PATH=/sbin:/bin:/system/bin:/system/xbin:/vendor/bin:/system_ext/bin:/system/vendor/bin:/system/system_ext/bin
+export SCRIPT_DIR=/usr/share/scripts
+
+##########################################
+### THIS SCRIPT RUNS AFTER SWITCH_ROOT ###
+##########################################
+
+# configure debugging output
+if [ "$DEBUG" ]; then
+	LOG=/tmp/log
+	set -x
+else
+	LOG=/dev/null
+	test -e "$LOG" || busybox mknod $LOG c 1 3
+fi
+exec 2>>$LOG
+
+# let busybox install all applets as symlinks
+busybox --install -s /bin
+
+busybox mount -t proc proc /proc
+busybox mount -t sysfs sys /sys
+busybox mount -t tmpfs tmpfs /tmp
+
+if test -n "$DEBUG"; then
+	# ensure they can open a controlling tty
+	mknod /dev/tty c 5 0
+	# create device nodes then spawn on them
+	mknod /dev/tty2 c 4 2 && openvt
+	mknod /dev/tty3 c 4 3 && openvt
+fi
+
+if test -z "$DEBUG"; then
+	echo 0 0 0 0 >/proc/sys/kernel/printk
+fi
+
+# initialise /dev (first time)
+busybox mount -t devtmpfs devtmpfs /dev
+mkdir -p /dev/block
+echo /bin/mdev >/proc/sys/kernel/hotplug
+mdev -s
+
+# First, chmod /sbin because somehow the build process messed up the permission
+chmod 755 /sbin/*
+
+# shellcheck disable=SC2013
+for c in $(cat /proc/cmdline); do
+	case "$c" in
+	*=*)
+		var_name=${c%%=*}
+		var_name=${var_name//./__}
+		var_name=${var_name//\//__}
+		var_value=${c#*=}
+		eval export "$var_name"="$var_value"
+		;;
+	*) ;;
+	esac
+done
+
+# "foo" as mount source is given to workaround a Busybox bug with NFS
+# - as it's ignored anyways it shouldn't harm for other filesystems.
+remount_rw() { mount -o remount,rw foo /cdrom; }
+
+ln -s android/system android/vendor /
+ln -s /vendor/firmware /system/lib/modules /lib
+mkdir -p /lib/modules
+ln -s /system/lib/modules /lib/modules/"$(uname -r)"
+
+busybox modprobe -a hid-apple
+
+# map fstab
+bash $SCRIPT_DIR/map-fstab
+
+# install
+# shellcheck disable=SC2093
+exec bash $SCRIPT_DIR/00_install >>$LOG 2>&1
+
+# avoid kernel panic
+while :; do
+	echo
+	echo '	Android-x86 console shell. Use only in emergencies.'
+	echo
+	debug_shell fatal-err
+done

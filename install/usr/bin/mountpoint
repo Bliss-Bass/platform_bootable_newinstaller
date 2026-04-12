@@ -1,0 +1,4 @@
+#!/bin/sh
+# shellcheck shell=ash
+
+grep -q "\s${1%/}\s" /proc/mounts

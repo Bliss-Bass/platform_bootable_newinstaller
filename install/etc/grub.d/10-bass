@@ -1,0 +1,114 @@
+#!/bin/bash
+# shellcheck disable=SC2086,SC2001,SC2154,SC1091
+set -e
+
+# grub-mkconfig helper script.
+# Copyright (C) 2006,2007,2008,2009  Free Software Foundation, Inc.
+#
+# GRUB is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# GRUB is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with GRUB.  If not, see <http://www.gnu.org/licenses/>.
+
+. "$pkgdatadir/grub-mkconfig_lib"
+. /etc/default/grub
+
+export TEXTDOMAIN=grub
+export TEXTDOMAINDIR="${datarootdir}/locale"
+
+CLASS="--class blissos --class android --class os"
+OS="Android"
+TITLE="BlissOS $(grep 'ro.bliss.version=' /system/build.prop | awk -F'=' '{print $2}')"
+
+ADVANCED_ARGS=(
+	"Debug mode: DEBUG=2 androidboot.enable_console=1"
+	"No Modeset: nomodeset"
+	"No hwaccel: HWACCEL=0"
+)
+
+RECOVERY_ARGS=(
+	""
+	"Debug mode: DEBUG=2 androidboot.enable_console=1"
+)
+
+disk="$(prepare_grub_to_access_device "$GRUB_DEVICE")"
+
+# Extra indentation to add to menu entries in a submenu. We're not in a submenu
+# yet, so it's empty. In a submenu it will be equal to '\t' (one tab).
+ROOT_DEVICE=$GRUB_DEVICE
+ROOT_UUID=$(${grub_probe} --device "$ROOT_DEVICE" --target=fs_uuid 2>/dev/null)
+
+[ "$ROOT_UUID" ] && ROOT_DEVICE="UUID=$ROOT_UUID"
+
+android_entry() {
+	local extra_title extra_args
+
+	# shellcheck disable=SC2015
+	extra_title=$1 &&
+		shift &&
+		extra_args=$* ||
+		:
+
+	echo "menuentry '$(echo "$TITLE${extra_title:+ - $extra_title}" | grub_quote)' ${CLASS} \$menuentry_id_option '$OS-${TITLE// /_}-\$SLOT${extra_args:+-${extra_args// /_}}' {"
+
+	save_default_entry | grub_add_tab
+
+	# Use ELILO's generic "efifb" when it's known to be available.
+	# FIXME: We need an interface to select vesafb in case efifb can't be used.
+	if [ ! "$GRUB_GFXPAYLOAD_LINUX" ]; then
+		echo "	load_video"
+		grep -qx "CONFIG_FB_EFI=y" "${config}" 2>/dev/null &&
+			grep -qx "CONFIG_VT_HW_CONSOLE_BINDING=y" "${config}" 2>/dev/null &&
+			echo "	set gfxpayload=keep"
+
+	else
+		[ "$GRUB_GFXPAYLOAD_LINUX" = text ] ||
+			echo "	load_video"
+		echo "	set gfxpayload=$GRUB_GFXPAYLOAD_LINUX"
+	fi
+
+	echo "	insmod gzio"
+	echo "$disk" | sed "s/^/$grub_tab/gm"
+	echo "	linux $SRC/kernel\$SLOT \$CMDLINE androidboot.mode=\$MODE $extra_args ROOT=$ROOT_DEVICE SRC=$SRC androidboot.slot_suffix=\$SLOT androidboot.bootctrl_bootcfg=/boot/grub/android.cfg"
+	echo "	initrd $SRC/initrd\$SLOT.img"
+	echo "}
+"
+}
+
+entry() { android_entry "$@" | sed "s/^/$submenu_indentation	/gm"; }
+
+# android.cfg is where BootCTL HAL updates current slot suffix after OTA
+cat <<'EOF'
+source $prefix/android.cfg
+export SLOT
+export CMDLINE
+export MODE
+EOF
+
+submenu_indentation=""
+android_entry
+
+submenu_indentation=$grub_tab
+
+old_title=$TITLE
+echo "submenu '$(echo "Recovery modes for $TITLE" | grub_quote)' --class recovery ${CLASS} \$menuentry_id_option '$OS-${TITLE// /_}-Recovery' {"
+TITLE="$TITLE - Recovery Mode"
+for arg in "${RECOVERY_ARGS[@]}"; do
+	entry "${arg%:*}" androidboot.mode=recovery androidboot.force_normal_boot=0 ${arg#*:}
+done
+echo "}"
+
+TITLE=$old_title
+echo "submenu '$(echo "Advanced options for $TITLE" | grub_quote)' --class submenu ${CLASS} \$menuentry_id_option '$OS-${TITLE// /_}-Advanced' {"
+for arg in "${ADVANCED_ARGS[@]}"; do
+	entry "${arg%:*}" ${arg#*:}
+done
+echo "}"
