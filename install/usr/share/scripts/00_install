@@ -599,18 +599,18 @@ install_to() {
 	[ -f "$DEST/$A_SRC/data.img" ] && data_type=.img
 	cat <<EOF >"$DEST/$A_SRC/fstab.android"
 
-\$FS/system\$SLOT.img     system\$SLOT
-\$FS/kernel\$SLOT         kernel\$SLOT
-\$FS/initrd\$SLOT.img     initrd\$SLOT
-\$FS/recovery\$SLOT.img   recovery\$SLOT
+\$FS/system\$SLOT.img	system\$SLOT
+\$FS/kernel\$SLOT	kernel\$SLOT
+\$FS/initrd\$SLOT.img	initrd\$SLOT
+\$FS/recovery\$SLOT.img	recovery\$SLOT
 
-\$FS/boot                bootloader
-\$FS/misc.img            misc
-\$FS/data${data_type}                userdata
+\$FS/boot	bootloader
+\$FS/misc.img	misc
+\$FS/data${data_type}	userdata	auto	defaults	defaults
 
 $($SCRIPT_DIR/genfstab -U "$DEST/$A_SRC")
 
-none                    /sys/firmware/efi/efivars    efivarfs  defaults                   defaults
+$([ "$efi" ] && echo "none	/sys/firmware/efi/efivars	efivarfs  defaults	defaults")
 EOF
 
 	dialog --infobox "\n Configuring bootloader..." 5 27
