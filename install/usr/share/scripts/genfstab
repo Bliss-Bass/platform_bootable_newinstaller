@@ -380,7 +380,7 @@ shift $(( OPTIND - 1 ))
 root=$(realpath -mL "$1"); shift
 
 if ! mountpoint -q "$root"; then
-  die "$root is not a mountpoint"
+  echo "$root is not a mountpoint"
 fi
 
 # handle block devices

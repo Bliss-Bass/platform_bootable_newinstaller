@@ -415,11 +415,12 @@ install_to() {
 	done
 
 	# fs=$(cat /proc/mounts | grep "/dev/$1" | awk '{ print $3 }')
-	CMDLINE="androidboot.slot_suffix=_a $(cat /cdrom/cmdline)"
-	export CMDLINE
 
 	[ "$INSTALL_PREFIX" ] && A_SRC=$INSTALL_PREFIX || A_SRC=
 	export A_SRC
+
+	CMDLINE="$(cat /cdrom/cmdline.txt) androidboot.slot_suffix=_a androidboot.mode=normal SRC=$A_SRC"
+	export CMDLINE
 
 	# shellcheck disable=SC1091
 	. $SCRIPT_DIR/grub_modules
@@ -569,13 +570,16 @@ install_to() {
 		$SCRIPT_DIR/make_ab "${dests[$i]}" "${sizes[$i]}"
 	done
 
-	local source target
+	local source target target_type
 	for i in $(seq 0 $((${#files[@]} - 1))); do
 		source="${files[$i]}"
 		target="${dests[$i]}"
 
+		target_type=.${target##*.}
+		[ "$target_type" = ".$target" ] && target_type=
+
 		pv -n "$source" |
-			dd of="$target" conv=notrunc 2>&1 |
+			dd of="${target%.*}_a${target_type}" conv=notrunc 2>&1 |
 			progress_bar "Installing $OS_TITLE to \"$1\"" "Expect to write $source ${sizes[$i]} KB..." || return 1
 	done
 
@@ -591,11 +595,26 @@ install_to() {
 
 	dialog --infobox "\n Preparing install for A/B updates..." 5 42
 	$SCRIPT_DIR/gen_img "$DEST/$A_SRC"
-	$SCRIPT_DIR/genfstab -U "$DEST/$A_SRC" >"$DEST/$A_SRC"/fstab.android
+	local data_type
+	[ -f "$DEST/$A_SRC/data.img" ] && data_type=.img
+	cat <<EOF >"$DEST/$A_SRC/fstab.android"
+
+\$FS/system\$SLOT.img     system\$SLOT
+\$FS/kernel\$SLOT         kernel\$SLOT
+\$FS/initrd\$SLOT.img     initrd\$SLOT
+\$FS/recovery\$SLOT.img   recovery\$SLOT
+
+\$FS/boot                bootloader
+\$FS/misc.img            misc
+\$FS/data${data_type}                userdata
+
+$($SCRIPT_DIR/genfstab -U "$DEST/$A_SRC")
+
+none                    /sys/firmware/efi/efivars    efivarfs  defaults                   defaults
+EOF
 
 	dialog --infobox "\n Configuring bootloader..." 5 27
 	grub-mkconfig -o "$DEST/$A_SRC/boot/grub/grub.cfg"
-
 	{
 		: # Grub overrides
 	}
