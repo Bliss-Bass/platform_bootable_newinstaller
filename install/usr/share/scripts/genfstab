@@ -379,8 +379,8 @@ shift $(( OPTIND - 1 ))
 (( $# )) || die "No root directory specified"
 root=$(realpath -mL "$1"); shift
 
-if ! mountpoint -q "$root"; then
-  echo "$root is not a mountpoint"
+if ! mountpoint "$root"; then
+  echo "$root is not a mountpoint" >&2
 fi
 
 # handle block devices

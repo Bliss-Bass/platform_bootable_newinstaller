@@ -15,34 +15,12 @@ export SCRIPT_DIR=/usr/share/scripts
 ### THIS SCRIPT RUNS AFTER SWITCH_ROOT ###
 ##########################################
 
-# configure debugging output
-if [ "$DEBUG" ]; then
-	LOG=/tmp/log
-	set -x
-else
-	LOG=/dev/null
-	test -e "$LOG" || busybox mknod $LOG c 1 3
-fi
-exec 2>>$LOG
-
 # let busybox install all applets as symlinks
-busybox --install -s /bin
+/bin/busybox --install -s /bin
 
 busybox mount -t proc proc /proc
 busybox mount -t sysfs sys /sys
 busybox mount -t tmpfs tmpfs /tmp
-
-if test -n "$DEBUG"; then
-	# ensure they can open a controlling tty
-	mknod /dev/tty c 5 0
-	# create device nodes then spawn on them
-	mknod /dev/tty2 c 4 2 && openvt
-	mknod /dev/tty3 c 4 3 && openvt
-fi
-
-if test -z "$DEBUG"; then
-	echo 0 0 0 0 >/proc/sys/kernel/printk
-fi
 
 # initialise /dev (first time)
 busybox mount -t devtmpfs devtmpfs /dev
@@ -50,8 +28,16 @@ mkdir -p /dev/block
 echo /bin/mdev >/proc/sys/kernel/hotplug
 mdev -s
 
-# First, chmod /sbin because somehow the build process messed up the permission
-chmod 755 /sbin/*
+# initialize file descriptors at /dev
+ln -s /proc/self/fd /dev/fd
+
+# First, chmod /usr/bin because somehow the build process messed up the permission
+chmod -R 755 /usr/bin
+
+# configure debugging output
+LOG=/tmp/log
+set -x
+exec 2>>$LOG
 
 # shellcheck disable=SC2013
 for c in $(cat /proc/cmdline); do
@@ -69,7 +55,7 @@ done
 
 # "foo" as mount source is given to workaround a Busybox bug with NFS
 # - as it's ignored anyways it shouldn't harm for other filesystems.
-remount_rw() { mount -o remount,rw foo /cdrom; }
+mount -o remount,rw foo /
 
 ln -s android/system android/vendor /
 ln -s /vendor/firmware /system/lib/modules /lib
@@ -78,17 +64,18 @@ ln -s /system/lib/modules /lib/modules/"$(uname -r)"
 
 busybox modprobe -a hid-apple
 
-# map fstab
+# fstab
 bash $SCRIPT_DIR/map-fstab
+mount -a
 
 # install
 # shellcheck disable=SC2093
-exec bash $SCRIPT_DIR/00_install >>$LOG 2>&1
+bash $SCRIPT_DIR/00_install 2>>$LOG
 
 # avoid kernel panic
 while :; do
 	echo
 	echo '	Android-x86 console shell. Use only in emergencies.'
 	echo
-	debug_shell fatal-err
+	bash
 done
