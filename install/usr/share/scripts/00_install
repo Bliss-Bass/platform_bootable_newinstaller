@@ -415,7 +415,7 @@ install_to() {
 
 		grub-install \
 			--target=i386-pc \
-			--boot-directory=$DEST/boot \
+			--boot-directory="$DEST/$A_SRC/boot" \
 			-v \
 			"/dev/$DISK" >$LOG ||
 			return 255
@@ -592,8 +592,10 @@ $([ "$EFI" ] && echo "none	/sys/firmware/efi/efivars	efivarfs  defaults	defaults
 EOF
 
 	dialog --infobox "\n Configuring bootloader..." 5 27
-	grub-mkconfig -o "$DEST/$A_SRC/boot/grub/grub.cfg"
-	cat <<EOF >>"$DEST/$A_SRC/boot/grub/android.cfg"
+	CONF_PREFIX=$DEST/$A_SRC/boot/grub
+	export CONF_PREFIX
+	grub-mkconfig -o "$CONF_PREFIX/grub.cfg"
+	cat <<EOF >>"$CONF_PREFIX/android.cfg"
 SLOT=_a
 CMDLINE="$CMDLINE"
 MODE=normal

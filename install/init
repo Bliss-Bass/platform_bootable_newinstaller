@@ -15,6 +15,9 @@ export SCRIPT_DIR=/usr/share/scripts
 ### THIS SCRIPT RUNS AFTER SWITCH_ROOT ###
 ##########################################
 
+# override /bin/sh
+/bin/busybox ln -s bash /bin/sh
+
 # let busybox install all applets as symlinks
 /bin/busybox --install -s /bin
 

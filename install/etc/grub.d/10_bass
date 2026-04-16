@@ -1,0 +1,246 @@
+#!/bin/bash
+# shellcheck disable=SC2086,SC2001,SC2154,SC1091
+set -e
+
+# grub-mkconfig helper script.
+# Copyright (C) 2006,2007,2008,2009  Free Software Foundation, Inc.
+#
+# GRUB is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# GRUB is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with GRUB.  If not, see <http://www.gnu.org/licenses/>.
+
+. "$pkgdatadir/grub-mkconfig_lib"
+. /etc/default/grub
+
+export TEXTDOMAIN=grub
+export TEXTDOMAINDIR="${datarootdir}/locale"
+
+CLASS="--class blissos --class android --class os"
+OS="Android"
+TITLE="BlissOS $(grep 'ro.bliss.version=' /system/build.prop | awk -F'=' '{print $2}')"
+
+DEFAULT_CMDLINE="splash=silent,fadein,fadeout logo loglevel=0 FORCE_DISABLE_NAV_HANDLE=1 console=tty6 HYBRID_PC_MODE=\$HYBRID_PC_MODE \$bliss_bootmode FORCE_DESKTOP_ON_EXTERNAL=\$DESKTOP_ON_EXTERNAL androidboot.force.win_as_home=\$win_as_home \$per_display_focus androidboot.force.ignore_external_input=\$external_input \$external_touch \$NAVIGATION MOUSE_PRESENTATION=\$MOUSE_PRESENTATION \$animation_scale FFMPEG_CODEC2_PREFER=\$FFMPEG_CODEC2_PREFER FFMPEG_OMX_CODEC=\$FFMPEG_OMX_CODEC"
+
+DEFAULT_RECOVERY_CMDLINE="androidboot.mode=recovery androidboot.force_normal_boot=0 androidboot.pixel_format=\$pixel_format"
+
+ADVANCED_ARGS=(
+	"Debug mode: DEBUG=2 androidboot.enable_console=1"
+	"Admin mode: DEBUG=2 androidboot.enable_console=1 androidboot.force.win_as_home=1 FFMPEG_OMX_CODEC=1 FFMPEG_CODEC2_PREFER=1 CODEC2_LEVEL=4 FORCE_USE_ADB_CLIENT_MODE=1 HYBRID_PC_MODE=1 FORCE_DISABLE_NAV_HANDLE=0 androidboot.bliss.bootmode=admin"
+)
+
+RECOVERY_ARGS=(
+	""
+	"Debug mode: DEBUG=2 androidboot.enable_console=1"
+)
+
+disk="$(prepare_grub_to_access_device "$GRUB_DEVICE")"
+
+# Extra indentation to add to menu entries in a submenu. We're not in a submenu
+# yet, so it's empty. In a submenu it will be equal to '\t' (one tab).
+ROOT_DEVICE=$GRUB_DEVICE
+ROOT_UUID=$(${grub_probe} --device "$ROOT_DEVICE" --target=fs_uuid 2>/dev/null)
+
+[ "$ROOT_UUID" ] && ROOT_DEVICE="UUID=$ROOT_UUID"
+
+android_entry() {
+	local extra_title extra_args
+
+	# shellcheck disable=SC2015
+	extra_title=$1 &&
+		shift &&
+		extra_args=$* ||
+		:
+
+	echo "menuentry '$(echo "$TITLE${extra_title:+ - $extra_title}" | grub_quote)' ${CLASS} \$menuentry_id_option '$OS-${TITLE// /_}-\$SLOT${extra_args:+-${extra_args// /_}}' {"
+
+	save_default_entry | grub_add_tab
+
+	# Use ELILO's generic "efifb" when it's known to be available.
+	# FIXME: We need an interface to select vesafb in case efifb can't be used.
+	if [ ! "$GRUB_GFXPAYLOAD_LINUX" ]; then
+		echo "	load_video"
+		grep -qx "CONFIG_FB_EFI=y" "${config}" 2>/dev/null &&
+			grep -qx "CONFIG_VT_HW_CONSOLE_BINDING=y" "${config}" 2>/dev/null &&
+			echo "	set gfxpayload=keep"
+
+	else
+		[ "$GRUB_GFXPAYLOAD_LINUX" = text ] ||
+			echo "	load_video"
+		echo "	set gfxpayload=$GRUB_GFXPAYLOAD_LINUX"
+	fi
+
+	echo "	insmod gzio"
+	echo "$disk" | sed "s/^/$grub_tab/g"
+	echo "	linux $SRC/kernel\$SLOT \$CMDLINE androidboot.mode=\$MODE $extra_args ROOT=$ROOT_DEVICE SRC=$SRC androidboot.slot_suffix=\$SLOT androidboot.bootctrl_bootcfg=/boot/grub/android.cfg"
+	echo "	initrd $SRC/initrd\$SLOT.img"
+	echo "}
+"
+}
+
+entry() { android_entry "$@" | sed "s/^/$submenu_indentation	/g"; }
+
+android_opt_single() {
+	local var_name=${1// /_} value_enabled=$2 value_disabled=$3 var_title=${4:-$1}
+	cat <<EOF
+function toggle_${var_name} {
+	if [ "\$${var_name}" != "$value_enabled" ]; then
+		set ${var_name}_title="Enable ${var_title}"
+		set ${var_name}_next="${value_enabled}"
+	else
+		set ${var_name}_title="Disable ${var_title}"
+		set ${var_name}_next="${value_disabled}"
+	fi
+	export ${var_name}_title
+	export ${var_name}_next
+	submenu --class driver --class="toggle_${var_name}" "\$${var_name}_title" {
+		set ${var_name}="\$${var_name}_next"
+		export ${var_name}
+		save_env ${var_name}
+		normal
+	}
+}
+toggle_${var_name}
+EOF
+}
+
+android_opt_multi() {
+	local var_name=${1// /_} var_title=${2:-$1}
+	cat <<EOF
+submenu 'Set ${var_title} values' --class submenu ${CLASS} \$menuentry_id_option '$OS-${TITLE// /_}-Advanced-${var_name}' {
+	$(
+		for val in "${VALUES[@]}"; do
+			cat <<OPT
+	menuentry 'Set ${var_title} to ${val%%:*}' ${CLASS} \$menuentry_id_option '$OS-${TITLE// /_}-Advanced-${var_name}-${val// /_}' {
+		set ${var_name}="${val#*: }"
+		export ${var_name}
+		save_env ${var_name}
+		normal
+	}
+OPT
+		done
+	)
+}
+EOF
+}
+
+# android.cfg is where BootCTL HAL updates current slot suffix after OTA
+cat <<'EOF'
+source $prefix/android.cfg
+export SLOT
+export CMDLINE
+export MODE
+EOF
+
+# custom variables handler
+cat <<'EOF'
+
+EOF
+
+submenu_indentation=""
+android_entry $DEFAULT_CMDLINE
+
+submenu_indentation=$grub_tab
+
+old_title=$TITLE
+echo "submenu '$(echo "Recovery modes for $TITLE" | grub_quote)' --class recovery ${CLASS} \$menuentry_id_option '$OS-${TITLE// /_}-Recovery' {"
+TITLE="$TITLE - Recovery Mode"
+for arg in "${RECOVERY_ARGS[@]}"; do
+	entry "${arg%:*}" $DEFAULT_CMDLINE $DEFAULT_RECOVERY_CMDLINE ${arg#*:}
+done
+# Toggle (+ for levels, 1 + for current level)
+# + pixel_format (switch pixel_format: RGBX_8888, ABGR_8888, ARGB_8888, BGRA_8888, RGBA_8888) (default: index 0)
+VALUES=(
+	"RGBX: RGBX_8888"
+	"ABGR: ABGR_8888"
+	"ARGB: ARGB_8888"
+	"BGRA: BGRA_8888"
+	"RGBA: RGBA_8888"
+)
+android_opt_multi pixel_format "Pixel format"
+grub-editenv $CONF_PREFIX/grubenv set pixel_format=${VALUES[0]} # set default value
+echo "}"
+
+TITLE=$old_title
+echo "submenu '$(echo "Advanced options for $TITLE" | grub_quote)' --class submenu ${CLASS} \$menuentry_id_option '$OS-${TITLE// /_}-Advanced' {"
+for arg in "${ADVANCED_ARGS[@]}"; do
+	entry "${arg%:*}" $DEFAULT_CMDLINE ${arg#*:}
+done
+# Toggle (+ for levels, 1 + for current level)
+# + UI Mode: Desktop, Kiosk, Tablet (switch BASS_UI: "BASS_DESKTOPUI=1 PC_MODE=1", "BASS_KIOSKUI=1 androidboot.bliss.bootmode=lockdown", "BASS_TABLETUI=1") (default: index 2)
+VALUES=(
+	"Desktop Mode: BASS_DESKTOPUI=1 PC_MODE=1"
+	"Kiosk Mode: BASS_KIOSKUI=1 androidboot.bliss.bootmode=lockdown"
+	"Tablet Mode: BASS_TABLETUI=1"
+)
+android_opt_multi ui_mode "UI Mode"
+grub-editenv $CONF_PREFIX/grubenv set ui_mode=${VALUES[2]} # set default value
+# + Hybrid PC Mode (for UI Mode = Desktop) (toggles HYBRID_PC_MODE, enabled: "1", disabled: "0") (default: disabled)
+android_opt_single HYBRID_PC_MODE "1" "0" "Hybrid PC Mode (for UI Mode = Desktop)"
+grub-editenv $CONF_PREFIX/grubenv set HYBRID_PC_MODE=0 # set default value
+# + Admin Mode (for UI Mode = Kiosk) (toggles bliss_bootmode, enabled: "androidboot.bliss.bootmode=admin", disabled: "") (default: disabled)
+android_opt_single bliss_bootmode "androidboot.bliss.bootmode=admin" "" "Admin Mode (for UI Mode = Kiosk)"
+grub-editenv $CONF_PREFIX/grubenv set bliss_bootmode= # set default value
+# + Display mode: Single, Multi (toggles DESKTOP_ON_EXTERNAL) (default: disabled)
+android_opt_single DESKTOP_ON_EXTERNAL "1" "0" "Multi display mode"
+grub-editenv $CONF_PREFIX/grubenv set DESKTOP_ON_EXTERNAL=0 # set default value
+# + Multi display options: (for Display mode = Multi)
+echo "submenu '$(echo "Multi display options" | grub_quote)' --class submenu ${CLASS} \$menuentry_id_option '$OS-${TITLE// /_}-MultiDisplay' {" | sed "s/^/$submenu_indentation/g"
+# ++ Win key as Home (toggles win_as_home) (default: enabled)
+android_opt_single win_as_home "1" "0" "Win key as Home"
+grub-editenv $CONF_PREFIX/grubenv set win_as_home=1 # set default value
+# ++ Per display focus (toggles per_display_focus, enabled: androidboot.per_display_focus_enabled=true, disabled: androidboot.force.disable_external_display_focus=1) (default: enabled)
+VALUES=(
+	"androidboot.per_display_focus_enabled=true"
+	"androidboot.force.disable_external_display_focus=1"
+)
+android_opt_single per_display_focus "${VALUES[0]}" "${VALUES[1]}" "Per display focus"
+grub-editenv $CONF_PREFIX/grubenv set per_display_focus="${VALUES[0]}" # set default value
+# ++ External input (toggles external_input) (default: enabled)
+android_opt_single external_input "0" "1" "Ignore external input"
+grub-editenv $CONF_PREFIX/grubenv set external_input=0 # set default value
+# ++ Dual touch: (toggles external_touch, enabled: "FORCE_IME_ON_SECONDARY_DISPLAYS=1", disabled: "androidboot.force.disable_external_touch=1") (default: enabled)
+VALUES=(
+	"FORCE_IME_ON_SECONDARY_DISPLAYS=1"
+	"androidboot.force.disable_external_touch=1"
+)
+android_opt_single external_touch "${VALUES[0]}" "${VALUES[1]}" "Dual touch"
+grub-editenv $CONF_PREFIX/grubenv set external_touch="${VALUES[0]}" # set default value
+# ++ Dual touch options (for Dual touch = enabled)
+echo "submenu '$(echo "Dual touch options (for Dual touch = enabled)" | grub_quote)' --class submenu ${CLASS} \$menuentry_id_option '$OS-${TITLE// /_}-DualTouch' {" | sed "s/^/$submenu_indentation$submenu_indentation/g"
+# +++ Navigation (toggles NAVIGATION, enabled="FORCE_DISABLE_NAVIGATION=false FORCE_DISABLE_NAV_HANDLE=false FORCE_DISABLE_NAV_TASKBAR=false", disabled="FORCE_DISABLE_NAVFORCE_IME_ON_SECONDARY_DISPLAYS=1IGATION=true FORCE_DISABLE_NAV_HANDLE=true FORCE_DISABLE_NAV_TASKBAR=true") (default: enabled)
+VALUES=(
+	"FORCE_DISABLE_NAVIGATION=false FORCE_DISABLE_NAV_HANDLE=false FORCE_DISABLE_NAV_TASKBAR=false"
+	"FORCE_DISABLE_NAVIGATION=true FORCE_DISABLE_NAV_HANDLE=true FORCE_DISABLE_NAV_TASKBAR=true"
+)
+android_opt_single NAVIGATION "${VALUES[0]}" "${VALUES[1]}" "Navigation"
+grub-editenv $CONF_PREFIX/grubenv set NAVIGATION="${VALUES[0]}" # set default value
+# +++ Mouse presentation (toggles MOUSE_PRESENTATION) (default: enabled)
+android_opt_single MOUSE_PRESENTATION "1" "0" "Mouse presentation"
+grub-editenv $CONF_PREFIX/grubenv set MOUSE_PRESENTATION=1 # set default value
+echo "}" | sed "s/^/$submenu_indentation$submenu_indentation/g"
+echo "}" | sed "s/^/$submenu_indentation/g"
+# + Fast animations (toggles animation_scale, enabled: "androidboot.bliss.window.animation.scale=0.1", disabled: "") (default: enabled)
+VALUES=(
+	"androidboot.bliss.window.animation.scale=0.1"
+)
+android_opt_single animation_scale "${VALUES[0]}" "" "Fast animations"
+grub-editenv $CONF_PREFIX/grubenv set animation_scale="${VALUES[0]}" # set default value
+# + Codecs:
+echo "submenu '$(echo "Codecs" | grub_quote)' --class submenu ${CLASS} \$menuentry_id_option '$OS-${TITLE// /_}-Codecs' {" | sed "s/^/$submenu_indentation/g"
+# ++ FFMPEG Codec2 (toggles FFMPEG_CODEC2_PREFER, enabled: "1", disabled: "0") (default: enabled)
+android_opt_single FFMPEG_CODEC2_PREFER "1" "0" "FFMPEG Codec2"
+grub-editenv $CONF_PREFIX/grubenv set FFMPEG_CODEC2_PREFER=1 # set default value
+# ++ FFMPEG OMX Codec (toggles FFMPEG_OMX_CODEC, enabled: "1", disabled: "0") (default: disabled)
+android_opt_single FFMPEG_OMX_CODEC "1" "0" "FFMPEG OMX Codec"
+grub-editenv $CONF_PREFIX/grubenv set FFMPEG_OMX_CODEC=0 # set default value
+echo "}" | sed "s/^/$submenu_indentation/g"
+echo "}"
