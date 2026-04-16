@@ -15,18 +15,6 @@ BUILD_TOP := $(shell pwd)
 
 ifneq ($(filter x86%,$(TARGET_ARCH)),)
 LOCAL_PATH := $(call my-dir)
-VERSION=$(shell date +%Y%m%d%H%M)
-
-# See if RELEASE_OS_TITLE is defined, and if not, use the current title
-ifeq ($(RELEASE_OS_TITLE),)
-RELEASE_OS_TITLE := Bliss-Bass-$(VERSION)
-else
-RELEASE_OS_TITLE := $(RELEASE_OS_TITLE)
-endif
-
-include $(BUILD_PREBUILT)
-
-VER ?= $$(date "+%Y-%m-%d")
 
 install_dir := $(LOCAL_PATH)/install
 install_lib_dir := $(LOCAL_PATH)/install_lib
@@ -107,13 +95,11 @@ else
 ROM_VENDOR_VERSION := $(BLISS_BUILD_ZIP)
 endif
 
-CHANGELOG := $(PRODUCT_OUT)/$(ROM_VENDOR_VERSION).iso
-$(CHANGELOG): $(boot_dir) $(INSTALL_RAMDISK)
+changelog: $(boot_dir) $(INSTALL_RAMDISK)
 	# Generate Changelog
 	bash bootable/newinstaller/tools/changelog
 	$(hide) mv Changelog.txt $(PRODUCT_OUT)/Changelog-$(ROM_VENDOR_VERSION).txt
 
 .PHONY: changelog
-changelog: $(CHANGELOG)
 
 endif
