@@ -16,6 +16,10 @@ BUILD_TOP := $(shell pwd)
 ifneq ($(filter x86%,$(TARGET_ARCH)),)
 LOCAL_PATH := $(call my-dir)
 
+ifeq ($(USE_NEWINSTALLER),)
+USE_NEWINSTALLER := 1
+endif
+
 install_dir := $(LOCAL_PATH)/install
 install_lib_dir := $(LOCAL_PATH)/install_lib
 
