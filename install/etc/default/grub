@@ -3,8 +3,10 @@ GRUB_DISTRIBUTOR='BlissLabs'
 
 GRUB_DISABLE_OS_PROBER=false
 
-GRUB_DEFAULT=saved
-GRUB_SAVEDEFAULT=true
-
 GRUB_GFXPAYLOAD_LINUX=keep
 GRUB_GFXMODE=320x240,640x480,auto
+
+_GRUB_THEMES_DIR=_grub_themes_dir_placeholder
+
+GRUB_THEME=$(find "$_GRUB_THEMES_DIR" -mindepth 1 -maxdepth 2 -type f -name "theme.txt" -print -quit || :)
+GRUB_BACKGROUND=$(find "$_GRUB_THEMES_DIR" -mindepth 1 -maxdepth 2 -type f -name "background.png" -print -quit || :)

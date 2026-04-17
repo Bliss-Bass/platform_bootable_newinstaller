@@ -618,12 +618,14 @@ EOF
 	dialog --infobox "\n Configuring bootloader..." 5 30
 	CONF_PREFIX=$DEST/$A_SRC/boot/grub
 	export CONF_PREFIX
+	sed -i "s|_grub_themes_dir_placeholder|$CONF_PREFIX/themes|g" /etc/default/grub
 	grub-mkconfig -o "$CONF_PREFIX/grub.cfg"
 	cat <<EOF >>"$CONF_PREFIX/android.cfg"
 SLOT=_a
 CMDLINE="$CMDLINE"
 MODE=normal
 EOF
+	grub-editenv "$CONF_PREFIX/grubenv" create || :
 	setenv() { grub-editenv "$CONF_PREFIX/grubenv" set "$@" >&2; }
 	{
 		setenv pixel_format="RGBX_8888"

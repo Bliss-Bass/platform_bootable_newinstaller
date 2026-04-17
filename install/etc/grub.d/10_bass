@@ -143,7 +143,7 @@ EOF
 }
 
 submenu_indentation=""
-android_entry $DEFAULT_CMDLINE
+android_entry "" $DEFAULT_CMDLINE
 
 submenu_indentation=$grub_tab
 
