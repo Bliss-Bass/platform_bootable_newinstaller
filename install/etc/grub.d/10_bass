@@ -21,12 +21,15 @@ set -e
 . "$pkgdatadir/grub-mkconfig_lib"
 . /etc/default/grub
 
+export SCRIPT_DIR=/usr/share/scripts
+[ -f $SCRIPT_DIR/00-ver ] && . $SCRIPT_DIR/00-ver
+
 export TEXTDOMAIN=grub
 export TEXTDOMAINDIR="${datarootdir}/locale"
 
 CLASS="--class blissos --class android --class os"
 OS="Android"
-TITLE="BlissOS $(grep 'ro.bliss.version=' /system/build.prop | awk -F'=' '{print $2}')"
+TITLE="${OS_TITLE:-BlissOS} $(grep 'ro.bliss.version=' /system/build.prop | awk -F'=' '{print $2}')"
 
 DEFAULT_CMDLINE="splash=silent,fadein,fadeout logo loglevel=0 FORCE_DISABLE_NAV_HANDLE=1 console=tty6 \$ui_mode HYBRID_PC_MODE=\$HYBRID_PC_MODE \$bliss_bootmode FORCE_DESKTOP_ON_EXTERNAL=\$DESKTOP_ON_EXTERNAL androidboot.force.win_as_home=\$win_as_home \$per_display_focus androidboot.force.ignore_external_input=\$external_input \$external_touch \$NAVIGATION MOUSE_PRESENTATION=\$MOUSE_PRESENTATION \$animation_scale FFMPEG_CODEC2_PREFER=\$FFMPEG_CODEC2_PREFER FFMPEG_OMX_CODEC=\$FFMPEG_OMX_CODEC"
 

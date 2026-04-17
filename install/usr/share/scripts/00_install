@@ -401,6 +401,13 @@ install_to() {
 	# shellcheck disable=SC1091
 	. $SCRIPT_DIR/grub_modules
 
+	local add_args=
+	if [ -d /usr/share/grub/themes ]; then
+		local theme
+		theme=$(find /usr/share/grub/themes -mindepth 1 -maxdepth 1 -type d -print -quit)
+		[ "$theme" ] && add_args="$add_args --themes=$(basename "$theme")"
+	fi
+
 	set_answer_if_auto 1
 	if { [ ! "$EFI" ] || [ "$OEM_INSTALL" = "mbr" ]; } &&
 		adialog --title " Confirm " --no-label Skip --defaultno --yesno \
@@ -421,9 +428,11 @@ install_to() {
 			done
 		fi
 
+		# shellcheck disable=SC2086
 		grub-install \
 			--target=i386-pc \
 			--boot-directory="$DEST/$A_SRC/boot" \
+			$add_args \
 			-v \
 			"/dev/$DISK" >$LOG ||
 			return 255
@@ -470,7 +479,6 @@ install_to() {
 			fi
 		fi
 
-		local add_args=
 		if [ "$(cat "/sys/block/$DISK/removable")" = 1 ]; then
 			add_args="$add_args --removable"
 		fi
@@ -483,6 +491,7 @@ install_to() {
 			grub_target=x86_64
 			efi_arch=x64
 		fi
+
 		# shellcheck disable=SC2086
 		grub-install \
 			--target=$grub_target-efi \
