@@ -606,7 +606,7 @@ $(bash $SCRIPT_DIR/genfstab -U "$DEST/$A_SRC")
 $([ "$EFI" ] && echo "none	/sys/firmware/efi/efivars	efivarfs  defaults	defaults")
 EOF
 
-	dialog --infobox "\n Configuring bootloader..." 5 27
+	dialog --infobox "\n Configuring bootloader..." 5 30
 	CONF_PREFIX=$DEST/$A_SRC/boot/grub
 	export CONF_PREFIX
 	grub-mkconfig -o "$CONF_PREFIX/grub.cfg"
@@ -615,6 +615,23 @@ SLOT=_a
 CMDLINE="$CMDLINE"
 MODE=normal
 EOF
+	setenv() { grub-editenv "$CONF_PREFIX/grubenv" set "$@" >&2; }
+	{
+		setenv pixel_format="RGBX_8888"
+		setenv ui_mode="BASS_TABLETUI=1"
+		setenv HYBRID_PC_MODE=0
+		setenv bliss_bootmode=
+		setenv DESKTOP_ON_EXTERNAL=0
+		setenv win_as_home=1
+		setenv per_display_focus="androidboot.per_display_focus_enabled=true"
+		setenv external_input=0
+		setenv external_touch="FORCE_IME_ON_SECONDARY_DISPLAYS=1"
+		setenv NAVIGATION="FORCE_DISABLE_NAVIGATION=false FORCE_DISABLE_NAV_HANDLE=false FORCE_DISABLE_NAV_TASKBAR=false"
+		setenv MOUSE_PRESENTATION=1
+		setenv animation_scale="androidboot.bliss.window.animation.scale=0.1"
+		setenv FFMPEG_CODEC2_PREFER=1
+		setenv FFMPEG_OMX_CODEC=0
+	}
 
 	dialog --infobox "\n Syncing to disk..." 5 27
 	sync
@@ -667,6 +684,9 @@ do_install() {
 	EFI=$(cat /sys/firmware/efi/fw_platform_size 2>/dev/null)
 	export BOOTED_FROM EFI
 
+	[ "$AUTO_INSTALL" ] && [ ! "$OEM_INSTALL" ] &&
+		OEM_INSTALL=$AUTO_INSTALL
+
 	until install_hd; do
 		if [ $RET = 255 ]; then
 			dialog --title ' Error! ' --yes-label Retry --no-label Reboot \
@@ -676,7 +696,7 @@ do_install() {
 	done
 
 	dialog --title " Installation completed! " --no-cancel --pause \
-		"\n\n$([ "$ISO_UNPLUGGED" ] || printf "Please unplug the installation media\n")Press any key to reboot." 12 51 30
+		"\n\n$([ "$ISO_UNPLUGGED" ] || printf "Please unplug the installation media. \n\n")Press any key to reboot." 12 48 30
 
 	rebooting
 }
