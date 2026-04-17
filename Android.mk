@@ -31,7 +31,7 @@ TARGET_INSTALL_OUT := $(PRODUCT_OUT)/install
 INSTALL_RAMDISK := $(PRODUCT_OUT)/install.img
 $(INSTALL_RAMDISK): $(wildcard $(LOCAL_PATH)/install/*/* $(LOCAL_PATH)/install/*/*/*/*) | $(ACP) $(HOST_OUT_EXECUTABLES)/toybox
 	$(hide) rm -rf $(TARGET_INSTALL_OUT)
-	mkdir -p $(addprefix $(TARGET_INSTALL_OUT)/,android apex dev proc sys tmp etc data cdrom boot source hd)
+	mkdir -p $(addprefix $(TARGET_INSTALL_OUT)/,android apex dev proc sys tmp etc data cdrom boot source hd var/lib/os-prober/mount)
 	touch $(addprefix $(TARGET_INSTALL_OUT)/,etc/fstab)
 	$(ACP) -dpr $(install_dir)/* $(install_lib_dir)/* $(TARGET_INSTALL_OUT)
 	cd $(TARGET_INSTALL_OUT); find . | $(HOST_OUT_EXECUTABLES)/toybox cpio -o | gzip -9 > $@; cd -
