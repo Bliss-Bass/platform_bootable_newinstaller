@@ -23,6 +23,7 @@ menufile=/tmp/menu-$$
 
 BOOT_ID=BassOS
 OS_TITLE=${OS_TITLE:-$BOOT_ID}
+MIN_PT_SIZE=${MIN_PT_SIZE:-10GB}
 DEST=/hd
 
 # Debug shell no longer takes arguments anymore
@@ -66,9 +67,16 @@ declare -a LIST_DISK=()
 
 list_disks() {
 	LIST_DISK=()
+	local b s
 	while read -r b; do
-		[ -d "$b" ] && [ ! -d "$b/$BOOTED_FROM" ] &&
+		s=$(size_gb "$b")
+		if : &&
+			[ -d "$b" ] &&
+			[ ! -d "$b/$BOOTED_FROM" ] &&
+			[ "$(cat "$b/ro")" != 1 ] &&
+			(("${s%.*}" > "${MIN_PT_SIZE%GB}")); then
 			LIST_DISK+=("$b")
+		fi
 	done < <(find /sys/block -mindepth 1 -maxdepth 1 | grep -Ev "loop|ram|sr|boot|rpmb")
 }
 
@@ -284,7 +292,7 @@ select_dev() {
 			f=$(grep "$(basename "$i")" $tempfile || printf "%-11s%-30s" "$(basename "$i")" unknown)
 
 			sz=$(size_gb "$i")
-			[ "$sz" = "0.00GB" ] && continue
+			((${sz%.*} > ${MIN_PT_SIZE%GB})) || continue
 
 			printf "\"$f%10s\" \"%-17s\"\n" "$sz" "$m $n" >>$menufile
 		done
@@ -462,6 +470,11 @@ install_to() {
 			fi
 		fi
 
+		local add_args=
+		if [ "$(cat "/sys/block/$DISK/removable")" = 1 ]; then
+			add_args="$add_args --removable"
+		fi
+
 		local efi_arch grub_target
 		if [ "$EFI" = "32" ]; then
 			grub_target=i386
@@ -470,12 +483,14 @@ install_to() {
 			grub_target=x86_64
 			efi_arch=x64
 		fi
+		# shellcheck disable=SC2086
 		grub-install \
 			--target=$grub_target-efi \
 			--efi-directory=efi \
 			--boot-directory="$DEST/$A_SRC/boot" \
 			--bootloader-id=$BOOT_ID \
 			--no-nvram \
+			$add_args \
 			-v \
 			"/dev/$DISK" >$LOG ||
 			return 255
@@ -648,6 +663,7 @@ do_install() {
 	BOOTED_FROM=$(basename "$(find_device "$ROOT")")
 	[ "$COPYTORAM" ] && grep -Eq '(tmpfs|none) /cdrom tmpfs' /proc/mounts &&
 		BOOTED_FROM=tmpfs ISO_UNPLUGGED=1
+	[ "$BOOTED_FROM" ] || BOOTED_FROM=unknown
 	EFI=$(cat /sys/firmware/efi/fw_platform_size 2>/dev/null)
 	export BOOTED_FROM EFI
 
