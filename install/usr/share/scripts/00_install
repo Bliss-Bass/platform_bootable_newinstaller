@@ -66,18 +66,27 @@ find_partition() { grep -H "^$2$" /sys/block/"$1"/*/partition 2>/dev/null | cut 
 declare -a LIST_DISK=()
 
 list_disks() {
-	LIST_DISK=()
+	# Prioritize internal disks
+	declare -a internal=() removable=()
 	local b s
 	while read -r b; do
 		s=$(size_gb "$b")
-		if : &&
-			[ -d "$b" ] &&
-			[ ! -d "$b/$BOOTED_FROM" ] &&
-			[ "$(cat "$b/ro")" != 1 ] &&
-			(("${s%.*}" > "${MIN_PT_SIZE%GB}")); then
-			LIST_DISK+=("$b")
+		if
+			: &&
+				[ -d "$b" ] &&
+				[ ! -d "$b/$BOOTED_FROM" ] &&
+				[ "$(cat "$b/ro")" != 1 ] &&
+				(("${s%.*}" > "${MIN_PT_SIZE%GB}"))
+		then
+			if [ "$(cat "$b/removable")" = 1 ]; then
+				removable+=("$b")
+			elif [ ! "$(blkid "/dev/$(basename "$b")")" ]; then 
+			# if device is not filesystem-on-disk (usually flashable USB/CD/DVD boot devices)
+				internal+=("$b")
+			fi
 		fi
 	done < <(find /sys/block -mindepth 1 -maxdepth 1 | grep -Ev "loop|ram|sr|boot|rpmb")
+	LIST_DISK=("${internal[@]}" "${removable[@]}")
 }
 
 # shellcheck disable=SC2068
