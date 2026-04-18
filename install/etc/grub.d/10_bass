@@ -64,51 +64,47 @@ android_entry() {
 		:
 
 	echo "menuentry '$(echo "$TITLE${extra_title:+ - $extra_title}" | grub_quote)' ${CLASS} \$menuentry_id_option '$OS-${TITLE// /_}-\$SLOT${extra_args:+-${extra_args// /_}}' {"
+	{
 
-	save_default_entry | grub_add_tab
+		save_default_entry
 
-	# Use ELILO's generic "efifb" when it's known to be available.
-	# FIXME: We need an interface to select vesafb in case efifb can't be used.
-	if [ ! "$GRUB_GFXPAYLOAD_LINUX" ]; then
-		echo "	load_video"
-		grep -qx "CONFIG_FB_EFI=y" "${config}" 2>/dev/null &&
-			grep -qx "CONFIG_VT_HW_CONSOLE_BINDING=y" "${config}" 2>/dev/null &&
-			echo "	set gfxpayload=keep"
+		# Use ELILO's generic "efifb" when it's known to be available.
+		# FIXME: We need an interface to select vesafb in case efifb can't be used.
+		if [ ! "$GRUB_GFXPAYLOAD_LINUX" ]; then
+			echo "load_video"
+			grep -qx "CONFIG_FB_EFI=y" "${config}" 2>/dev/null &&
+				grep -qx "CONFIG_VT_HW_CONSOLE_BINDING=y" "${config}" 2>/dev/null &&
+				echo "set gfxpayload=keep"
 
-	else
-		[ "$GRUB_GFXPAYLOAD_LINUX" = text ] ||
-			echo "	load_video"
-		echo "	set gfxpayload=$GRUB_GFXPAYLOAD_LINUX"
-	fi
+		else
+			[ "$GRUB_GFXPAYLOAD_LINUX" = text ] ||
+				echo "load_video"
+			echo "set gfxpayload=$GRUB_GFXPAYLOAD_LINUX"
+		fi
 
-	echo "	insmod gzio"
-	echo "$disk" | sed "s/^/$grub_tab/g"
-	echo "	linux $SRC/kernel\$SLOT \$CMDLINE androidboot.mode=\$MODE $extra_args ROOT=$ROOT_DEVICE SRC=$SRC androidboot.slot_suffix=\$SLOT androidboot.bootctrl_bootcfg=/boot/grub/android.cfg"
-	echo "	initrd $SRC/initrd\$SLOT.img"
+		echo "insmod gzio"
+		echo "$disk"
+		echo "linux $SRC/kernel\$SLOT \$CMDLINE androidboot.mode=\$MODE $extra_args ROOT=$ROOT_DEVICE SRC=$SRC androidboot.slot_suffix=\$SLOT androidboot.bootctrl_bootcfg=/boot/grub/android.cfg"
+		echo "initrd $SRC/initrd\$SLOT.img"
+	} | grub_add_tab
 	echo "}
 "
 }
 
-entry() { android_entry "$@" | sed "s/^/$submenu_indentation	/g"; }
-
 android_opt_single() {
-	local var_name=${1// /_} value_enabled=$2 value_disabled=$3 var_title=${4:-$1} 
+	local var_name=${1// /_} value_enabled=$2 value_disabled=$3 var_title=${4:-$1}
 	local var_title_short=${5:-$4}
 	echo "submenu 'Set ${var_title} values' --class submenu ${CLASS} \$menuentry_id_option '$OS-${TITLE// /_}-Advanced-${var_name}' {"
-	cat <<EOF | sed "s/^/$submenu_indentation/g"
-submenu 'Enable ${var_title_short}' --class submenu ${CLASS} \$menuentry_id_option '$OS-${TITLE// /_}-Advanced-${var_name}-${value_enabled// /_}' {
-	set ${var_name}="${value_enabled}"
-	export ${var_name}
-	save_env ${var_name}
-	normal
-}
-submenu 'Disable ${var_title_short}' --class submenu ${CLASS} \$menuentry_id_option '$OS-${TITLE// /_}-Advanced-${var_name}-${value_disabled// /_}' {
-	set ${var_name}="${value_disabled}"
+	for val in "Enable:$value_enabled" "Disable:$value_disabled"; do
+		cat <<EOF
+submenu '${val%%:*} ${var_title_short}' --class submenu ${CLASS} \$menuentry_id_option '$OS-${TITLE// /_}-Advanced-${var_name}-${val//[: ]/_}' {
+	set ${var_name}="${val#*: }"
 	export ${var_name}
 	save_env ${var_name}
 	normal
 }
 EOF
+	done | grub_add_tab
 	echo "}"
 
 }
@@ -117,7 +113,7 @@ android_opt_multi() {
 	local var_name=${1// /_} var_title=${2:-$1}
 	echo "submenu 'Set ${var_title} values' --class submenu ${CLASS} \$menuentry_id_option '$OS-${TITLE// /_}-Advanced-${var_name}' {"
 	for val in "${VALUES[@]}"; do
-		cat <<EOF | sed "s/^/$submenu_indentation/g"
+		cat <<EOF
 submenu 'Set ${var_title} to ${val%%:*}' --class submenu ${CLASS} \$menuentry_id_option '$OS-${TITLE// /_}-Advanced-${var_name}-${val// /_}' {
 	set ${var_name}="${val#*: }"
 	export ${var_name}
@@ -125,7 +121,7 @@ submenu 'Set ${var_title} to ${val%%:*}' --class submenu ${CLASS} \$menuentry_id
 	normal
 }
 EOF
-	done
+	done | grub_add_tab
 	echo "}"
 }
 
@@ -142,19 +138,19 @@ EOF
 	:
 }
 
-submenu_indentation=""
 android_entry "" $DEFAULT_CMDLINE
-
-submenu_indentation=$grub_tab
 
 old_title=$TITLE
 echo "submenu '$(echo "Recovery modes for $TITLE" | grub_quote)' --class recovery ${CLASS} \$menuentry_id_option '$OS-${TITLE// /_}-Recovery' {"
 TITLE="$TITLE - Recovery Mode"
-for arg in "${RECOVERY_ARGS[@]}"; do
-	entry "${arg%:*}" $DEFAULT_CMDLINE $DEFAULT_RECOVERY_CMDLINE ${arg#*:}
-done
-# Toggle (+ for levels, 1 + for current level)
 {
+	echo "load_env" # Make sure env vars are loaded
+
+	for arg in "${RECOVERY_ARGS[@]}"; do
+		android_entry "${arg%:*}" $DEFAULT_CMDLINE $DEFAULT_RECOVERY_CMDLINE ${arg#*:}
+	done
+
+	# Toggle (+ for levels, 1 + for current level)
 	# + pixel_format (switch pixel_format: RGBX_8888, ABGR_8888, ARGB_8888, BGRA_8888, RGBA_8888) (default: index 0)
 	VALUES=(
 		"RGBX: RGBX_8888"
@@ -164,17 +160,19 @@ done
 		"RGBA: RGBA_8888"
 	)
 	android_opt_multi pixel_format "Pixel format"
-} | sed "s/^/$submenu_indentation/g"
+
+} | grub_add_tab
 echo "}"
 
 TITLE=$old_title
 echo "submenu '$(echo "Advanced options for $TITLE" | grub_quote)' --class submenu ${CLASS} \$menuentry_id_option '$OS-${TITLE// /_}-Advanced' {"
-for arg in "${ADVANCED_ARGS[@]}"; do
-	entry "${arg%:*}" $DEFAULT_CMDLINE ${arg#*:}
-done
-
-# Toggle (+ for levels, 1 + for current level)
 {
+	echo "load_env" # Make sure env vars are loaded
+
+	for arg in "${ADVANCED_ARGS[@]}"; do
+		android_entry "${arg%:*}" $DEFAULT_CMDLINE ${arg#*:}
+	done
+
 	# + UI Mode: Desktop, Kiosk, Tablet
 	# switch BASS_UI:
 	# "BASS_DESKTOPUI=1 PC_MODE=1",
@@ -263,10 +261,10 @@ done
 			# default: enabled
 			android_opt_single MOUSE_PRESENTATION "1" "0" "Mouse presentation"
 
-		} | sed "s/^/$submenu_indentation/g"
+		} | grub_add_tab
 		echo "}"
 
-	} | sed "s/^/$submenu_indentation/g"
+	} | grub_add_tab
 	echo "}"
 
 	# + Fast animations
@@ -295,8 +293,8 @@ done
 		# disabled: "0") (default: disabled
 		android_opt_single FFMPEG_OMX_CODEC "1" "0" "FFMPEG OMX Codec"
 
-	} | sed "s/^/$submenu_indentation/g"
+	} | grub_add_tab
 	echo "}"
 
-} | sed "s/^/$submenu_indentation/g"
+} | grub_add_tab
 echo "}"
