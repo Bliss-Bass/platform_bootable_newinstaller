@@ -98,7 +98,7 @@ android_opt_single() {
 	for val in "Enable:$value_enabled" "Disable:$value_disabled"; do
 		cat <<EOF
 submenu '${val%%:*} ${var_title_short}' --class submenu ${CLASS} \$menuentry_id_option '$OS-${TITLE// /_}-Advanced-${var_name}-${val//[: ]/_}' {
-	set ${var_name}="${val#*: }"
+	set ${var_name}="${val#*:}"
 	export ${var_name}
 	save_env ${var_name}
 	normal
