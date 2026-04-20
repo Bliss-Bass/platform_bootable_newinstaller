@@ -14,11 +14,9 @@
 BUILD_TOP := $(shell pwd)
 
 ifneq ($(filter x86%,$(TARGET_ARCH)),)
+ifeq ($(USE_NEWINSTALLER),true)
 LOCAL_PATH := $(call my-dir)
 
-ifeq ($(USE_NEWINSTALLER),)
-USE_NEWINSTALLER := 1
-endif
 
 install_dir := $(LOCAL_PATH)/install
 install_lib_dir := $(LOCAL_PATH)/install_lib
@@ -40,4 +38,4 @@ $(INSTALL_RAMDISK): $(wildcard $(LOCAL_PATH)/install/*/* $(LOCAL_PATH)/install/*
 installimage: $(INSTALL_RAMDISK)
 
 endif
-
+endif
