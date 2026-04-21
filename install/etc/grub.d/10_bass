@@ -31,12 +31,14 @@ CLASS="--class blissos --class android --class os"
 OS="Android"
 TITLE="${OS_TITLE:-BlissOS} $(grep 'ro.bliss.version=' /system/build.prop | awk -F'=' '{print $2}')"
 
-DEFAULT_CMDLINE="splash=silent,fadein,fadeout logo loglevel=0 FORCE_DISABLE_NAV_HANDLE=1 console=tty6 \$ui_mode HYBRID_PC_MODE=\$HYBRID_PC_MODE \$bliss_bootmode FORCE_DESKTOP_ON_EXTERNAL=\$DESKTOP_ON_EXTERNAL androidboot.force.win_as_home=\$win_as_home \$per_display_focus androidboot.force.ignore_external_input=\$external_input \$external_touch \$NAVIGATION MOUSE_PRESENTATION=\$MOUSE_PRESENTATION \$animation_scale FFMPEG_CODEC2_PREFER=\$FFMPEG_CODEC2_PREFER FFMPEG_OMX_CODEC=\$FFMPEG_OMX_CODEC"
+DEFAULT_CMDLINE="splash=silent,fadein,fadeout logo loglevel=0 console=tty6 \$ui_mode HYBRID_PC_MODE=\$HYBRID_PC_MODE \$bliss_bootmode FORCE_DESKTOP_ON_EXTERNAL=\$DESKTOP_ON_EXTERNAL androidboot.force.win_as_home=\$win_as_home \$per_display_focus androidboot.force.ignore_external_input=\$external_input \$external_touch \$NAVIGATION MOUSE_PRESENTATION=\$MOUSE_PRESENTATION \$animation_scale FFMPEG_CODEC2_PREFER=\$FFMPEG_CODEC2_PREFER FFMPEG_OMX_CODEC=\$FFMPEG_OMX_CODEC"
 
 DEFAULT_RECOVERY_CMDLINE="androidboot.mode=recovery androidboot.force_normal_boot=0 androidboot.pixel_format=\$pixel_format"
 
 ADVANCED_ARGS=(
-	"Debug mode: DEBUG=2 androidboot.enable_console=1"
+	"Debug mode 1: DEBUG=1 androidboot.enable_console=1"
+	"Debug mode 2: DEBUG=2 androidboot.enable_console=1"
+	"Debug mode 3: DEBUG=3 androidboot.enable_console=1"
 	"Admin mode: DEBUG=2 androidboot.enable_console=1 androidboot.force.win_as_home=1 FFMPEG_OMX_CODEC=1 FFMPEG_CODEC2_PREFER=1 CODEC2_LEVEL=4 FORCE_USE_ADB_CLIENT_MODE=1 HYBRID_PC_MODE=1 FORCE_DISABLE_NAV_HANDLE=0 androidboot.bliss.bootmode=admin"
 )
 
@@ -180,9 +182,10 @@ echo "submenu '$(echo "Advanced options for $TITLE" | grub_quote)' --class subme
 	# "BASS_TABLETUI=1"
 	# default: index 2
 	VALUES=(
+		"Tablet Mode: BASS_TABLETUI=1"
 		"Desktop Mode: BASS_DESKTOPUI=1 PC_MODE=1"
 		"Kiosk Mode: BASS_KIOSKUI=1 androidboot.bliss.bootmode=lockdown"
-		"Tablet Mode: BASS_TABLETUI=1"
+		"Kiosk Mode - Admin: BASS_KIOSKUI=1 androidboot.bliss.bootmode=admin"
 	)
 	android_opt_multi ui_mode "UI Mode"
 
