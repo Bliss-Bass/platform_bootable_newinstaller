@@ -31,7 +31,7 @@ CLASS="--class blissos --class android --class os"
 OS="Android"
 TITLE="${OS_TITLE:-BlissOS} $(grep 'ro.bliss.version=' /system/build.prop | awk -F'=' '{print $2}')"
 
-DEFAULT_CMDLINE="splash=silent,fadein,fadeout logo loglevel=0 console=tty6 \$ui_mode HYBRID_PC_MODE=\$HYBRID_PC_MODE \$bliss_bootmode FORCE_DESKTOP_ON_EXTERNAL=\$DESKTOP_ON_EXTERNAL androidboot.force.win_as_home=\$win_as_home \$per_display_focus androidboot.force.ignore_external_input=\$external_input \$external_touch \$NAVIGATION MOUSE_PRESENTATION=\$MOUSE_PRESENTATION \$animation_scale FFMPEG_CODEC2_PREFER=\$FFMPEG_CODEC2_PREFER FFMPEG_OMX_CODEC=\$FFMPEG_OMX_CODEC"
+DEFAULT_CMDLINE="splash=silent,fadein,fadeout logo androidboot.enable_console=1 \$ui_mode HYBRID_PC_MODE=\$HYBRID_PC_MODE \$bliss_bootmode FORCE_DESKTOP_ON_EXTERNAL=\$DESKTOP_ON_EXTERNAL androidboot.force.win_as_home=\$win_as_home \$per_display_focus androidboot.force.ignore_external_input=\$external_input \$external_touch \$NAVIGATION MOUSE_PRESENTATION=\$MOUSE_PRESENTATION \$animation_scale FFMPEG_CODEC2_PREFER=\$FFMPEG_CODEC2_PREFER FFMPEG_OMX_CODEC=\$FFMPEG_OMX_CODEC"
 
 DEFAULT_RECOVERY_CMDLINE="androidboot.mode=recovery androidboot.force_normal_boot=0 androidboot.pixel_format=\$pixel_format"
 
