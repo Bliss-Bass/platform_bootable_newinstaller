@@ -1,0 +1,18 @@
+#!/bin/bash
+
+run() {
+	setenv pixel_format="RGBX_8888"
+	setenv ui_mode="BASS_TABLETUI=1"
+	setenv HYBRID_PC_MODE=0
+	setenv bliss_bootmode=
+	setenv DESKTOP_ON_EXTERNAL=0
+	setenv win_as_home=1
+	setenv per_display_focus="androidboot.per_display_focus_enabled=true"
+	setenv external_input=0
+	setenv external_touch="FORCE_IME_ON_SECONDARY_DISPLAYS=1"
+	setenv NAVIGATION="FORCE_DISABLE_NAVIGATION=false FORCE_DISABLE_NAV_HANDLE=false FORCE_DISABLE_NAV_TASKBAR=false"
+	setenv MOUSE_PRESENTATION=1
+	setenv animation_scale="androidboot.bliss.window.animation.scale=0.1"
+	setenv FFMPEG_CODEC2_PREFER=1
+	setenv FFMPEG_OMX_CODEC=0
+}

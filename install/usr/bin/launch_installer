@@ -1,0 +1,3 @@
+#!/bin/bash
+
+bash $SCRIPT_DIR/00_install

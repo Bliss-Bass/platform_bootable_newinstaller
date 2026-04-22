@@ -10,24 +10,26 @@
 #
 # shellcheck disable=SC2164,SC1091
 
-export SCRIPT_DIR=/usr/share/scripts
+export \
+	SCRIPT_DIR=/usr/share/scripts \
+	MODULES_DIR=/usr/share/modules
 
 # configure debugging output
 LOG=/tmp/log
 set -x
 
 [ -f $SCRIPT_DIR/00-ver ] && . $SCRIPT_DIR/00-ver
+[ -f /etc/.config ] && . /etc/.config
 
 tempfile=/tmp/temp-$$
 menufile=/tmp/menu-$$
 
-BOOT_ID=BassOS
-OS_TITLE=${OS_TITLE:-$BOOT_ID}
-MIN_PT_SIZE=${MIN_PT_SIZE:-10GB}
-DEST=/hd
-
 # Debug shell no longer takes arguments anymore
-debug_shell() { bash 2>&1; }
+debug_shell() {
+	clear
+	echo -e "You are going to use AOSP's shell, if you want to go back to the installer please type exit, or relaunch it with \"launch_installer\" command."
+	bash 2>&1
+}
 
 rebooting() {
 	dialog --title " Rebooting... " --nocancel --pause "" 8 41 1
@@ -80,8 +82,8 @@ list_disks() {
 		then
 			if [ "$(cat "$b/removable")" = 1 ]; then
 				removable+=("$b")
-			elif [ ! "$(blkid "/dev/$(basename "$b")")" ]; then 
-			# if device is not filesystem-on-disk (usually flashable USB/CD/DVD boot devices)
+			elif [ ! "$(blkid "/dev/$(basename "$b")")" ]; then
+				# if device is not filesystem-on-disk (usually flashable USB/CD/DVD boot devices)
 				internal+=("$b")
 			fi
 		fi
@@ -385,6 +387,8 @@ wait_for_device() {
 	done
 }
 
+setenv() { grub-editenv "$CONF_PREFIX/grubenv" set "$@" >&2; }
+
 install_to() {
 	wait_for_device "$1" || return 1
 	cd /
@@ -400,9 +404,6 @@ install_to() {
 		FORCE_FORMAT=ext4
 		export FORCE_FORMAT
 	done
-
-	[ "$INSTALL_PREFIX" ] && A_SRC=$INSTALL_PREFIX || A_SRC=
-	export A_SRC
 
 	CMDLINE="$(cat /cdrom/cmdline.txt) SRC=$A_SRC" # androidboot.slot_suffix=_a androidboot.mode=normal
 	export CMDLINE
@@ -520,7 +521,7 @@ install_to() {
 		local default_entry=efi/efi/boot/boot$efi_arch.efi
 		if [ ! -e $default_entry ]; then
 			mkdir -p efi/efi/boot
-			cp efi/$bootefi $default_entry
+			cp "efi/$bootefi" $default_entry
 		fi
 
 		CMDLINE="$CMDLINE androidboot.efidir=/boot/efi/$efidir androidboot.efidisk=$boot"
@@ -535,16 +536,16 @@ install_to() {
 		fi
 		# Check if the entry has been created, if not, it may due to the efivar got full
 		# Remove all /sys/firmware/efi/efivars/dump-* and run the command again
-		if efibootmgr -u -v -c -d "/dev/$DISK" -p "$esp" -L "$BOOT_ID" -l /$bootefi >/dev/tty4 2>&1 &&
+		if efibootmgr -u -v -c -d "/dev/$DISK" -p "$esp" -L "$BOOT_ID" -l "/$bootefi" >/dev/tty4 2>&1 &&
 			! efibootmgr | grep -q "$BOOT_ID"; then
 			rm -rf /sys/firmware/efi/efivars/dump-*
-			efibootmgr -u -v -c -d "/dev/$DISK" -p "$esp" -L "$BOOT_ID" -l /$bootefi >/dev/tty4 2>&1
+			efibootmgr -u -v -c -d "/dev/$DISK" -p "$esp" -L "$BOOT_ID" -l "/$bootefi" >/dev/tty4 2>&1
 		fi
 
 		if [ -s efi/startup.nsh ]; then
 			sed -i "s|\\\\efi\\\\Android|$efidir|; s|/|\\\\|g" efi/startup.nsh
 		else
-			echo $efidir/$bootefi | sed 's|/|\\|g' >efi/startup.nsh
+			echo "$efidir/$bootefi" | sed 's|/|\\|g' >efi/startup.nsh
 		fi
 
 		cd /
@@ -624,9 +625,13 @@ $(bash $SCRIPT_DIR/genfstab -U "$DEST/$A_SRC")
 $([ "$EFI" ] && echo "none	/sys/firmware/efi/efivars	efivarfs  defaults	defaults")
 EOF
 
+	find $MODULES_DIR/run -mindepth 1 -maxdepth 1 -type f -executable |
+		while read -r m; do
+			# shellcheck disable=SC1090
+			source "$m" && run
+		done
+
 	dialog --infobox "\n Configuring bootloader..." 5 30
-	CONF_PREFIX=$DEST/$A_SRC/boot/grub
-	export CONF_PREFIX
 	sed -i "s|_grub_themes_dir_placeholder|$CONF_PREFIX/themes|g" /etc/default/grub
 	grub-mkconfig -o "$CONF_PREFIX/grub.cfg"
 	cat <<EOF >>"$CONF_PREFIX/android.cfg"
@@ -635,23 +640,12 @@ CMDLINE="$CMDLINE"
 MODE=normal
 EOF
 	grub-editenv "$CONF_PREFIX/grubenv" create || :
-	setenv() { grub-editenv "$CONF_PREFIX/grubenv" set "$@" >&2; }
-	{
-		setenv pixel_format="RGBX_8888"
-		setenv ui_mode="BASS_TABLETUI=1"
-		setenv HYBRID_PC_MODE=0
-		setenv bliss_bootmode=
-		setenv DESKTOP_ON_EXTERNAL=0
-		setenv win_as_home=1
-		setenv per_display_focus="androidboot.per_display_focus_enabled=true"
-		setenv external_input=0
-		setenv external_touch="FORCE_IME_ON_SECONDARY_DISPLAYS=1"
-		setenv NAVIGATION="FORCE_DISABLE_NAVIGATION=false FORCE_DISABLE_NAV_HANDLE=false FORCE_DISABLE_NAV_TASKBAR=false"
-		setenv MOUSE_PRESENTATION=1
-		setenv animation_scale="androidboot.bliss.window.animation.scale=0.1"
-		setenv FFMPEG_CODEC2_PREFER=1
-		setenv FFMPEG_OMX_CODEC=0
-	}
+
+	find $MODULES_DIR/early -mindepth 1 -maxdepth 1 -type f -executable |
+		while read -r m; do
+			# shellcheck disable=SC1090
+			source "$m" && run
+		done
 
 	dialog --infobox "\n Syncing to disk..." 5 27
 	sync
@@ -685,9 +679,7 @@ install_hd() {
 		return $?
 		;;
 	Detect*) dialog --title " Detecting... " --nocancel --pause "" 8 41 1 ;;
-	*shell*) dialog --clear --title " WARNING " --nocancel --pause \
-		"You are going to use AOSP's shell, if you want to go back to the installer please type exit" 12 41 8 &&
-		debug_shell ;;
+	*shell*) debug_shell ;;
 	*)
 		install_to $CHOICE
 		return $?
@@ -697,15 +689,11 @@ install_hd() {
 }
 
 do_install() {
-	BOOTED_FROM=$(basename "$(find_device "$ROOT")")
-	[ "$COPYTORAM" ] && grep -Eq '(tmpfs|none) /cdrom tmpfs' /proc/mounts &&
-		BOOTED_FROM=tmpfs ISO_UNPLUGGED=1
-	[ "$BOOTED_FROM" ] || BOOTED_FROM=unknown
-	EFI=$(cat /sys/firmware/efi/fw_platform_size 2>/dev/null)
-	export BOOTED_FROM EFI
-
-	[ "$AUTO_INSTALL" ] && [ ! "$OEM_INSTALL" ] &&
-		OEM_INSTALL=$AUTO_INSTALL
+	find $MODULES_DIR/early -mindepth 1 -maxdepth 1 -type f -executable |
+		while read -r m; do
+			# shellcheck disable=SC1090
+			source "$m" && run
+		done
 
 	until install_hd; do
 		if [ $RET = 255 ]; then
@@ -720,5 +708,23 @@ do_install() {
 
 	rebooting
 }
+
+export DEST=/hd
+
+BOOTED_FROM=$(basename "$(find_device "$ROOT")")
+[ "$COPYTORAM" ] && grep -Eq '(tmpfs|none) /cdrom tmpfs' /proc/mounts &&
+	BOOTED_FROM=tmpfs ISO_UNPLUGGED=1
+[ "$BOOTED_FROM" ] || BOOTED_FROM=unknown
+
+EFI=$(cat /sys/firmware/efi/fw_platform_size 2>/dev/null)
+export BOOTED_FROM EFI
+
+[ "$AUTO_INSTALL" ] && [ ! "$OEM_INSTALL" ] &&
+	OEM_INSTALL=$AUTO_INSTALL
+
+[ "$INSTALL_PREFIX" ] && A_SRC=$INSTALL_PREFIX || A_SRC=
+export A_SRC
+
+export CONF_PREFIX=$DEST/$A_SRC/boot/grub
 
 do_install

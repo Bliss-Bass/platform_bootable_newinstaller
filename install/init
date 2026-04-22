@@ -73,12 +73,13 @@ mount -a
 
 # install
 # shellcheck disable=SC2093
-bash $SCRIPT_DIR/00_install 2>>$LOG
+launch_installer 2>>$LOG
 
 # avoid kernel panic
 while :; do
 	echo
 	echo '	Android-x86 console shell. Use only in emergencies.'
+	echo '	To relaunch installer, run "launch_installer".'
 	echo
 	bash
 done
