@@ -184,6 +184,7 @@ echo "submenu '$(echo "Advanced options for $TITLE" | grub_quote)' --class subme
 	VALUES=(
 		"Tablet Mode: BASS_TABLETUI=1"
 		"Desktop Mode: BASS_DESKTOPUI=1 PC_MODE=1"
+		"Hybrid Desktop Mode: BASS_DESKTOPUI=1 HYBRID_PC_MODE=1"
 		"Kiosk Mode: BASS_KIOSKUI=1 androidboot.bliss.bootmode=lockdown"
 		"Kiosk Mode - Admin: BASS_KIOSKUI=1 androidboot.bliss.bootmode=admin"
 	)
